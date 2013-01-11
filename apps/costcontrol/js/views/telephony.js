@@ -72,6 +72,7 @@ var TelephonyTab = (function() {
     ConfigManager.requestSettings(function _onSettings(settings) {
       costcontrol.request(requestObj, function _afterRequest(result) {
         var telephonyActivity = result.data;
+        debug('Last telephony activity:', telephonyActivity);
         updateTimePeriod(settings.lastTelephonyReset, null, null, settings);
         updateCounters(telephonyActivity);
         updateNextReset(settings.nextReset, null, null, settings);
@@ -91,7 +92,7 @@ var TelephonyTab = (function() {
       unit: 'SMS'
     });
     calltime.innerHTML = _('magnitude', {
-      value: Math.ceil(activity.calltime / 60000),
+      value: computeTelephonyMinutes(activity),
       unit: 'min.'
     });
   }

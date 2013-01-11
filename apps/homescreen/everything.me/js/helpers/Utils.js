@@ -38,7 +38,19 @@ Evme.Utils = new function Evme_Utils() {
     };
     
     this.log = function log(message) {
-        dump("(" + (new Date().getTime()) + ") DOAT: " + message);
+        var t = new Date(),
+            h = t.getHours(),
+            m = t.getMinutes(),
+            s = t.getSeconds(),
+            ms = t.getMilliseconds();
+        
+        h < 10 && (h = '0' + h);
+        m < 10 && (m = '0' + m);
+        s < 10 && (s = '0' + s);
+        ms < 10 && (ms = '00' + ms) ||
+        ms < 100 && (ms = '0' + ms);
+        
+        dump("[" + [h, m, s, ms].join(':') + " EVME]: " + message);
     };
     
     this.l10n = function l10n(module, key, args) {
@@ -70,6 +82,11 @@ Evme.Utils = new function Evme_Utils() {
             translation = text[currentLang] || text[firstLanguage] || '';
         
         return translation;
+    };
+    
+    this.shortcutIdToKey = function l10nShortcutKey(experienceId) {
+        var map = Evme.__config.shortcutIdsToL10nKeys || {};
+        return map[experienceId.toString()] || experienceId;
     };
     
     this.sendToOS = function sendToOS(type, data) {
@@ -179,7 +196,7 @@ Evme.Utils = new function Evme_Utils() {
     };
 
     this.isOnline = function isOnline(callback) {
-        Connection.online(callback);
+       Connection.online(callback);
     };
 
     this.getUrlParam = function getUrlParam(key) {
@@ -267,16 +284,16 @@ Evme.Utils = new function Evme_Utils() {
 
             var docFrag = document.createDocumentFragment();
             for (var i=0; i<apps.length; i++) {
-                var app = new Evme.App(apps[i], numAppsOffset+i, isMore, self);
-                var id = apps[i].id;
-                var icon = app.getIcon();
-
+                var appData = apps[i],
+                    app = new Evme.App(appData, numAppsOffset+i, isMore, self),
+                    id = appData.id,
+                    icon = app.getIcon();
+                
                 icon = Evme.IconManager.parse(id, icon, iconsFormat);
                 app.setIcon(icon);
                 
                 if (Evme.Utils.isKeyboardVisible && (isMore || i<Math.max(apps.length/2, 8))) {
-                    var elApp = app.draw();
-                    docFrag.appendChild(elApp);
+                    docFrag.appendChild(app.draw());
                 } else {
                     doLater.push(app);
                 }
@@ -290,9 +307,9 @@ Evme.Utils = new function Evme_Utils() {
                     iconsResult["cached"].push(icon);
                 }
 
-                appsList[id] = appsList;
+                appsList[''+id] = app;
 
-                if (apps[i].installed) {
+                if (appData.installed) {
                     hasInstalled = true;
                 }
             }
@@ -306,9 +323,8 @@ Evme.Utils = new function Evme_Utils() {
             if (doLater.length > 0) {
                 timeoutAppsToDrawLater = window.setTimeout(function onTimeout(){
                     var docFrag = document.createDocumentFragment();
-                    for (var i=0; i<doLater.length; i++) {
-                        var elApp = doLater[i].draw();
-                        docFrag.appendChild(elApp);
+                    for (var i=0,app; app=doLater[i++];) {
+                        docFrag.appendChild(app.draw());
                     }
                     elList.appendChild(docFrag);
                     

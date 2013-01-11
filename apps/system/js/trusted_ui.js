@@ -153,7 +153,8 @@ var TrustedUIManager = {
     return this.currentStack[this.currentStack.length - 1];
   },
 
-  _pushNewDialog: function trui_PushNewDialog(name, frame, chromeEventId, onCancelCB) {
+  _pushNewDialog: function trui_PushNewDialog(name, frame, chromeEventId,
+                                              onCancelCB) {
     // add some data attributes to the frame
     var dataset = frame.dataset;
     dataset.frameType = 'popup';
@@ -276,6 +277,10 @@ var TrustedUIManager = {
         this._destroyDialog(evt.detail.origin);
         break;
       case 'appwillopen':
+        // Hiding trustedUI when coming from Activity
+        if (this.isVisible())
+          this.hideTrustedApp();
+
         // Ignore homescreen
         if (evt.target.classList.contains('homescreen'))
           return;
