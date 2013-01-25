@@ -282,7 +282,7 @@ body {
 }
 
 #windows > .appWindow.opening {
-  transition: transform 0.25s ease, opacity 0.15s ease;
+  transition: transform 0.01s ease, opacity 0.01s ease;
 }
 
 #windows.slow-transition > .appWindow.opening {
