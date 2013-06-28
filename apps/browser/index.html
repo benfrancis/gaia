@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="shared/style/responsive.css" type="text/css">
     <!-- Specific style -->
     <link rel="stylesheet" href="style/browser.css" type="text/css">
+    <link rel="stylesheet" href="style/toolbar.css" type="text/css">
     <!-- Localization -->
     <link rel="resource" type="application/l10n" href="shared/locales/branding.ini">
     <link rel="resource" type="application/l10n" href="locales/locales.ini">
@@ -27,6 +28,7 @@
     <!-- Specific code -->
     <script defer src="js/places.js"></script>
     <script defer src="js/browser.js"></script>
+    <script defer src="js/toolbar.js"></script>
 
     <!-- Resources -->
     <link rel="resource" type="image/png" href="shared/resources/branding/Browser.png"/>
@@ -118,7 +120,9 @@
               title="" disabled="true"></button>
       <button type="button" value="" id="forward-button" alt="Forward"
               title="" disabled="true"></button>
-      <button type="button" value="" id="bookmark-button" alt="Bookmark"
+      <button type="button" disabled="true" value="" id="bookmark-button" alt="Bookmark"
+              title=""></button>
+      <button type="button" disabled="true" value="" id="share-button" alt="Share"
               title=""></button>
     </menu>
 
