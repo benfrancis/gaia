@@ -6,13 +6,13 @@ SOURCE="${BASH_SOURCE[0]}"
 DIR="$( cd "$( dirname "$SOURCE" )" && pwd )"
 
 # where all gaia specific customizations for mocha-marionette live.
-SHARED=$DIR/../shared/test/integration/
+SHARED=$DIR/../shared/test/integration
 
 # download b2g-desktop (if its not present)
 make -C $DIR/../ b2g
 
 # make sure node_modules are 100% up to date
-cd $DIR/.. && npm install && cd $DIR
+`cd $DIR && npm install`
 
 # tests can timeout without the profile-test folder so build it here.
 if [ ! -d $DIR/../profile-test ]; then
