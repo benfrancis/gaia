@@ -97,9 +97,9 @@
                 this._lastActivity);
               break;
             }
-            var app = WindowManager.getCurrentActiveAppWindow();
-            var callee = app.activityCallee;
-            if (callee) {
+            var app = AppWindowManager._activeApp;
+            if (app) {
+              var callee = app.activityCallee;
               // XXX: We don't know the activity is the same request
               // or not here. The data passed may be different.
               // So we just kill all.
@@ -131,7 +131,8 @@
         case 'activityterminated':
           this._activities.forEach(function iterator(activity, index) {
             if (activity.instanceID === evt.detail.instanceID) {
-              if (activity.instanceID === this._lastActivity.instanceID) {
+              if (this._lastActivity &&
+                  activity.instanceID === this._lastActivity.instanceID) {
                 this._lastActivity = null;
               }
               if (this._activeActivity &&

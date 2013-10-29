@@ -58,7 +58,7 @@
       // otherwise always open a new window for '_blank'.
       var origin = null;
       var app = null;
-      var runningApps = WindowManager.getRunningApps();
+      var runningApps = AppWindowManager.runningApps;
       if (name == '_blank') {
         origin = url;
 
@@ -66,7 +66,7 @@
         // already running with this url.
         if (origin in runningApps &&
             runningApps[origin].windowName == '_blank') {
-          WindowManager.setDisplayedApp(origin);
+          this.publish('displayapp', { origin: origin });
         }
       } else {
         origin = 'window:' + name + ',source:' + callerOrigin;
@@ -75,11 +75,11 @@
         if (runningApp && runningApp.windowName === name) {
           if (runningApp.iframe.src === url) {
             // If the url is already loaded, just display the app
-            WindowManager.setDisplayedApp(origin);
+            this.publish('displayapp', { origin: origin });
             return;
           } else {
             // Wrapper context shouldn't be shared between two apps -> killing
-            WindowManager.kill(origin);
+            this.publish('killapp', { origin: origin });
           }
         }
       }
@@ -94,7 +94,29 @@
       if (!browser_config.title)
         browser_config.title = url;
 
-      this.publish('launchwrapper', browser_config);
+      this.launchWrapper(browser_config);
+    },
+
+    launchWrapper: function wf_launchWrapper(config) {
+      var app = AppWindowManager.runningApps[config.origin];
+      var iframe;
+      if (!app) {
+        config.chrome = {
+          navigation: true,
+          rocketbar: false
+        };
+        app = new AppWindow(config);
+      } else {
+        iframe = app.iframe;
+
+        // XXX: Move this into app window.
+        // Do not touch the name here directly.
+        // Update app name for the card view
+        app.manifest ? (app.manifest.name = config.title) :
+                        (app.name = config.title);
+      }
+
+      this.publish('displayapp', { origin: config.origin });
     },
 
     hasPermission: function wf_hasPermission(app, permission) {
@@ -133,8 +155,7 @@
     },
 
     publish: function wf_publish(event, detail) {
-      var evt = document.createEvent('CustomEvent');
-      evt.initCustomEvent(event, true, false, detail);
+      var evt = new CustomEvent(event, { detail: detail });
       window.dispatchEvent(evt);
     }
   };

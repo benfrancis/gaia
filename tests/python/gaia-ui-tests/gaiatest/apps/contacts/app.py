@@ -16,7 +16,7 @@ class Contacts(Base):
     _settings_button_locator = (By.ID, 'settings-button')
     _favorites_list_locator = (By.ID, 'contacts-list-favorites')
     _app_heading_locator = (By.CSS_SELECTOR, 'h1[data-l10n-id="contacts"]')
-    _contacts_frame_locator = (By.CSS_SELECTOR, 'iframe[src*="contacts"][src*="/index.html"]')
+    _contacts_frame_locator = (By.CSS_SELECTOR, 'iframe[src*="contacts"]')
     _select_all_button_locator = (By.CSS_SELECTOR, 'button[data-l10n-id="selectAll"]')
     _export_button_locator = (By.ID, 'select-action')
     _status_message_locator = (By.ID, 'statusMsg')

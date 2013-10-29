@@ -8,8 +8,24 @@ var OrientationManager = {
         function(value) {
           this.globalOrientation = value ?
             this.fetchCurrentOrientation() : null;
-          this.publish('globalorientationchanged');
+          this.publish('reset-orientation');
         }.bind(this));
+    }
+
+    window.addEventListener('attentionscreenhide', this);
+    window.addEventListener('status-active', this);
+    window.addEventListener('sleepmenuhide', this);
+    window.addEventListener('trusteduiclose', this);
+  },
+
+  handleEvent: function om_handleEvent(evt) {
+    switch (evt.type) {
+      case 'attentionscreenhide':
+      case 'status-active':
+      case 'sleepmenuhide':
+      case 'trusteduiclose':
+        this.publish('reset-orientation');
+        break;
     }
   },
 
@@ -17,6 +33,10 @@ var OrientationManager = {
 
   // Fetch the default orientation once the module is loaded.
   defaultOrientation: screen.mozOrientation,
+
+  isDefaultPortrait: function() {
+    return (this.defaultOrientation === 'portrait-primary');
+  },
 
   _isOnRealDevice: undefined,
 
@@ -28,7 +48,7 @@ var OrientationManager = {
     // is to detect screen size.
     // The screen size of b2g running on real device
     // is the same as the size of system app.
-    if (window.innerWidth === screen.width) {
+    if (window.innerWidth === screen.availWidth) {
       this._isOnRealDevice = true;
     } else {
       this._isOnRealDevice = false;
@@ -44,6 +64,7 @@ var OrientationManager = {
       this.defaultOrientation = window.innerWidth > window.innerHeight ?
         'landscape-primary' : 'portrait-primary';
     } else {
+      screen.mozLockOrientation('default');
       this.defaultOrientation = screen.mozOrientation;
     }
   },

@@ -26,6 +26,10 @@ body, html {
   background-color: #121212;
 }
 
+#statusbar.invisible {
+  opacity: 0;
+}
+
 #screen.locked:not(.attention) #statusbar{
   background-color: transparent;
 }
