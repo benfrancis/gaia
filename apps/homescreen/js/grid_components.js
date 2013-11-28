@@ -26,7 +26,8 @@ var GridItem = function GridItem(params) {
 
   this.id = params.id || '';
   this.url = this.origin = this.bookmarkURL = params.bookmarkURL;
-  this.features = params.features || '';
+  this.toolbar = params.toolbar || null;
+  this.location = params.location || null;
 
   this.manifest = {
     name: params.name,
@@ -62,7 +63,8 @@ GridItem.prototype = {
       icon: this.manifest.icons && this.manifest.icons['60'],
       remote: true,
       useAsyncPanZoom: this.useAsyncPanZoom,
-      features: this.features
+      toolbar: this.toolbar,
+      location: this.location
     };
   }
 };

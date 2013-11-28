@@ -101,10 +101,6 @@
       var app = AppWindowManager.runningApps[config.origin];
       var iframe;
       if (!app) {
-        config.chrome = {
-          navigation: true,
-          rocketbar: false
-        };
         app = new AppWindow(config);
       } else {
         iframe = app.iframe;
@@ -149,6 +145,28 @@
         config.useAsyncPanZoom = true;
       } else {
         config.useAsyncPanZoom = false;
+      }
+
+      config.chrome = {};
+  
+      // Rocketbar is not displayed by default
+      if ('location' in features &&
+          (features.location == 'yes') ||  features.location == '1') {
+        console.log('MSG rocketbar turned on');
+        config.chrome.rocketbar = true;
+      } else {
+        config.chrome.rocketbar = false;
+        console.log('MSG rocketbar not turned on');
+      }
+
+      // Navigation bar is displayed by default
+      if ('toolbar' in features &&
+          (features.toolbar == 'no' || features.toolbar == '0' )) {
+        console.log('MSG toolbar not turned on');
+        config.chrome.toolbar = false;
+      } else {
+        console.log('MSG toolbar turned on');
+        config.chrome.toolbar = true;
       }
 
       return config;
