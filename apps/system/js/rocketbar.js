@@ -10,6 +10,8 @@ var Rocketbar = {
 
   searchBar: document.getElementById('search-bar'),
 
+  title: document.getElementById('rocketbar-title'),
+
   get shown() {
     return ('visible' in this.searchBar.dataset);
   },
@@ -29,6 +31,9 @@ var Rocketbar = {
     SettingsListener.observe('rocketbar.enabled', false,
     function(value) {
       this.enabled = value;
+    }.bind(this));
+    window.addEventListener('mozbrowserlocationchange', function(e) {
+      this.setTitle(e.detail);
     }.bind(this));
   },
 
@@ -130,6 +135,16 @@ var Rocketbar = {
       input.focus();
       self.loadSearchApp();
     });
+  },
+
+  /**
+   * Sets the title displayed in the status bar.
+   *
+   * @param {String} title The title of the page.
+   */
+  setTitle: function rb_setTitle(title) {
+    //if ('wrapper' in currentAppFrame().dataset) {
+    this.title.textContent = title;
   }
 };
 

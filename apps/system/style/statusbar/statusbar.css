@@ -36,6 +36,17 @@ body, html {
   margin: 0 0.2rem;
 }
 
+#statusbar > #rocketbar-title {
+  float: left;
+  display: block;
+  max-width: 50%;
+  height: 2rem;
+  padding: 0.2rem;
+  font-size: 1.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #statusbar > .sb-start {
   float: left;
   -moz-transition: visibility 0.5s ease, -moz-transform 0.5s ease;
