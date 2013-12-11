@@ -1,11 +1,12 @@
 'use strict';
 
+require('/shared/js/lazy_loader.js');
 require('/shared/test/unit/mocks/mock_lazy_loader.js');
 require('/shared/test/unit/mocks/mock_download.js');
 requireApp('system/test/unit/mock_download_store.js');
 requireApp('system/test/unit/mock_download_ui.js');
 requireApp('system/test/unit/mock_download_formatter.js');
-requireApp('system/test/unit/mock_download_launcher.js');
+requireApp('system/test/unit/mock_download_helper.js');
 requireApp('system/test/unit/mock_l10n.js');
 requireApp('system/test/unit/mock_notification_screen.js');
 requireApp('system/test/unit/mock_activity.js');
@@ -18,7 +19,7 @@ var mocksForDownloadNotification = new MocksHelper([
   'L10n',
   'LazyLoader',
   'MozActivity',
-  'DownloadLauncher',
+  'DownloadHelper',
   'DownloadFormatter',
   'DownloadUI',
   'DownloadStore'
@@ -67,9 +68,9 @@ suite('system/DownloadNotification >', function() {
     download.onstatechange();
     assertUpdatedNotification(download);
 
-    var args = NotificationScreen.addNotification.args[0];
-    var percentage = DownloadFormatter.getPercentage(download);
-    assert.isTrue(args[0].text.indexOf(percentage) !== -1);
+    sinon.assert.calledWithMatch(NotificationScreen.addNotification, {
+      noNotify: true
+    });
   });
 
   test('The notification was clicked while downloading > Show download list',
@@ -98,9 +99,9 @@ suite('system/DownloadNotification >', function() {
     download.onstatechange();
     assertUpdatedNotification(download);
 
-    var args = NotificationScreen.addNotification.args[0];
-    var percentage = DownloadFormatter.getPercentage(download);
-    assert.isTrue(args[0].text.indexOf(percentage) !== -1);
+    sinon.assert.calledWithMatch(NotificationScreen.addNotification, {
+      noNotify: true
+    });
   });
 
   test('Download was stopped', function() {
@@ -122,9 +123,9 @@ suite('system/DownloadNotification >', function() {
     download.onstatechange();
     assertUpdatedNotification(download);
 
-    var args = NotificationScreen.addNotification.args[0];
-    var percentage = DownloadFormatter.getPercentage(download);
-    assert.isTrue(args[0].text.indexOf(percentage) !== -1);
+    sinon.assert.calledWithMatch(NotificationScreen.addNotification, {
+      noNotify: true
+    });
   });
 
   test('Download finishes', function() {
@@ -137,7 +138,7 @@ suite('system/DownloadNotification >', function() {
 
   test('Finished notification was clicked > Open file', function() {
     notification.onClick(function() {});
-    assert.equal(DownloadLauncher.methodCalled, 'launch');
+    assert.equal(DownloadHelper.methodCalled, 'launch');
 
     assert.isNull(notification.id);
     assert.isNull(notification.download);

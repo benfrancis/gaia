@@ -77,11 +77,6 @@ var Widget = (function() {
 
   function startWidget() {
 
-    // Refresh UI when the user changes the SIM for data connections
-    SettingsListener.observe('ril.data.defaultServiceId', 0, function() {
-      Common.loadDataSIMIccId(updateUI.bind(null, true));
-    });
-
     function _onNoICCID() {
       console.error('checkSIMChange() failed. Impossible to ensure consistent' +
                     'data. Aborting start up.');
@@ -164,8 +159,14 @@ var Widget = (function() {
       }
     );
 
-    initialized = true;
     updateUI();
+
+    // Refresh UI when the user changes the SIM for data connections
+    SettingsListener.observe('ril.data.defaultServiceId', 0, function() {
+      Common.loadDataSIMIccId(updateUI.bind(null, true));
+    });
+
+    initialized = true;
   }
 
   // BALANCE ACTIONS
