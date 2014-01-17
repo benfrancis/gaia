@@ -419,8 +419,13 @@
       </div>
 
       <div id="statusbar" data-z-index-level="statusbar">
-        <!-- Browser chrome title-->
-        <div id="statusbar-title"></div>
+        <!-- Rocketbar -->
+        <form id="rocketbar" class="skin-dark">
+          <input id="rocketbar-input" type="text" x-inputmode="verbatim"
+            placeholder="Search or type address" data-l10n-id="search-or-type-address"></input>
+          <button id="rocketbar-reset" type="reset" class="hidden">x</button>
+          <button id="rocketbar-cancel" data-l10n-id="cancel" type="button">Cancel</button>
+        </form>
 
         <div id="statusbar-icons">
           <!-- Time -->
@@ -469,7 +474,8 @@
             data-num="" hidden></div>
         </div>
       </div>
-      <div id="search-bar" data-z-index-level="search-bar">
+      <div id="rocketbar-results" data-z-index-level="rocketbar-results" class="hidden"></div>
+      <!--<div id="search-bar" data-z-index-level="search-bar">
         <form id="search-form" class="skin-dark">
           <p>
             <input id="search-input" type="search" x-inputmode="verbatim" placeholder="Search or type address" data-l10n-id="search-or-type-address"></input>
@@ -480,7 +486,7 @@
           </p>
         </form>
         <div id="search-container"></div>
-      </div>
+      </div>-->
 
       <div id="utility-tray" data-z-index-level="utility-tray">
         <!-- notifications -->

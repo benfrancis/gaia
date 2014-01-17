@@ -152,6 +152,21 @@ var StatusBar = {
     this.element.classList.add('invisible');
   },
 
+  /**
+   * Expands statusbar to expanded state.
+   */
+  expand: function sb_expand() {
+    this.element.classList.add('expanded');
+    window.dispatchEvent(new CustomEvent('statusbarexpand'));
+  },
+
+  /**
+   * Collapses statusbar to status state.
+   */
+  collapse: function sb_collapse() {
+    this.element.classList.remove('expanded');
+  },
+
   init: function sb_init() {
     this.getAllElements();
 

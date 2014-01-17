@@ -63,9 +63,6 @@ var UtilityTray = {
       case 'keyboardchangecanceled':
       case 'simpinshow':
       case 'appopening':
-        if (Rocketbar.shown) {
-          Rocketbar.hide(evt.type);
-        }
         if (this.shown) {
           this.hide();
         }
@@ -136,13 +133,15 @@ var UtilityTray = {
         touch.pageX < this.screenWidth * Rocketbar.triggerWidth) {
       UtilityTray.hide();
       Rocketbar.pointerY = touch.pageY;
-      Rocketbar.render(this.screenHeight);
+      //Rocketbar.render(this.screenHeight);
+      StatusBar.expand();
       return;
     } else {
       window.dispatchEvent(new CustomEvent('taskmanagerhide'));
     }
 
-    Rocketbar.hide();
+    //Rocketbar.hide();
+    StatusBar.collapse();
     this.active = true;
 
     this.startY = touch.pageY;

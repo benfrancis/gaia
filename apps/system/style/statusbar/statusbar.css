@@ -24,6 +24,12 @@ body, html {
   display: flex;
   flex-direction: row;
   -moz-user-select: none;
+  
+  transition: height 0.2s ease;
+}
+
+#statusbar.expanded {
+  height: 4rem;
 }
 
 #screen.locked:not(.attention) #statusbar{
@@ -34,21 +40,14 @@ body, html {
   display: block;
 }
 
+#statusbar.expanded #statusbar-icons {
+  display: none;
+}
+
 #statusbar-icons > * {
   pointer-events: none;
   float: right;
   margin: 0 0.2rem;
-}
-
-#statusbar-title {
-  pointer-events: none;
-  flex-grow: 1;
-  flex-shrink: 1;
-  min-width: 33%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-left: 0.3rem;
 }
 
 body:not(.rb-enabled) #statusbar-title {
@@ -68,7 +67,6 @@ body:not(.rb-enabled) #statusbar-icons {
   max-width: 100%;
 }
 
-#statusbar-title,
 body:not(.rb-enabled) #statusbar-icons > .sb-start {
   float: left;
   -moz-transition: visibility 0.5s ease, -moz-transform 0.5s ease;
@@ -96,9 +94,11 @@ body:not(.rb-enabled) #statusbar-icons > .sb-start {
   right: 0;
 }
 
-.utility-tray #statusbar-icons > .sb-start-upper,
-.utility-tray #statusbar > #statusbar-title,
-#statusbar-title.hidden {
+#screen.utility-tray #statusbar-icons, #screen.locked #statusbar-icons {
+  max-width: 100%;
+}
+
+.utility-tray #statusbar-icons > .sb-start-upper {
   visibility: visible;
   -moz-transform: translateY(2rem);
 }
@@ -115,7 +115,7 @@ body:not(.rb-enabled) #statusbar-icons > .sb-start {
   bottom: 0.1rem;
 }
 
-#statusbar-title,
+#rocketbar,
 #statusbar-time, #statusbar-data:not(.sb-icon-data-circle) {
   position: relative;
   bottom: 0.1rem;
