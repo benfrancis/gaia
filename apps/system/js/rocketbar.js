@@ -68,7 +68,8 @@ var Rocketbar = {
     window.addEventListener('cardviewclosed', this.cardviewClosed.bind(this));
     window.addEventListener('cardviewclosedhome',
       this.cardviewClosedHome.bind(this));
-    window.addEventListener('home', this.handleHome.bind(this));
+    window.addEventListener('home', this.collapse.bind(this));
+    window.addEventListener('homescreenopened', this.defaultTitle.bind(this));
 
     // Events from Rocketbar
     this.input.addEventListener('input', this.handleInput.bind(this));
@@ -229,6 +230,7 @@ var Rocketbar = {
     this.expanded = false;
     this.hideResults();
     this.hideTaskManager();
+    this.defaultTitle();
 
     var searchFrame = this.results.querySelector('iframe');
     if (searchFrame && searchFrame.setVisible) {
@@ -325,7 +327,6 @@ var Rocketbar = {
    * Handle Rocketbar cancel button press.
    */
   handleCancel: function() {
-      this.input.value = '';
       this.collapse();
   },
 
@@ -382,11 +383,13 @@ var Rocketbar = {
   },
 
   /**
-   * Handle going home.
+   * Sets the default title.
    */
-  handleHome: function() {
-    this.input.value = '';
-    this.collapse();
+  defaultTitle: function() {
+    var activeApp = AppWindowManager.getActiveApp();
+    if (!this.expanded && activeApp.isHomescreen) {
+      this.input.value = navigator.mozL10n.get('search');
+    }
   },
 
   /**

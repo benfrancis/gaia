@@ -5,7 +5,9 @@ requireApp('system/shared/test/unit/mocks/mock_settings_listener.js');
 requireApp('system/test/unit/mock_cards_view.js');
 requireApp('system/test/unit/mock_app_window_manager.js');
 requireApp('system/test/unit/mock_lock_screen.js');
+requireApp('system/test/unit/mock_app_window_manager.js');
 requireApp('system/test/unit/mock_app_window.js');
+requireApp('system/test/unit/mock_l10n.js');
 requireApp('system/js/lockscreen.js');
 mocha.globals(['Rocketbar']);
 
@@ -23,6 +25,8 @@ suite('system/Rocketbar', function() {
   var stubById;
   var fakeEvt;
   var fakeElement;
+  var activeAppStub;
+  var realL10n;
 
   var fakeAppConfig = {
     url: 'app://www.fake/index.html',
@@ -34,17 +38,26 @@ suite('system/Rocketbar', function() {
 
   mocksForRocketBar.attachTestHelpers();
   setup(function(done) {
+    realL10n = navigator.mozL10n;
+    navigator.mozL10n = MockL10n;
+
     fakeElement = document.createElement('div');
     fakeElement.style.cssText = 'height: 100px; display: block;';
     stubById = this.sinon.stub(document, 'getElementById')
                           .returns(fakeElement.cloneNode(true));
+    activeAppStub = this.sinon.stub(AppWindowManager, 'getActiveApp')
+                          .returns({
+                            isHomescreen: false
+                          });
     this.sinon.useFakeTimers();
     requireApp('system/js/rocketbar.js', done);
   });
 
   teardown(function() {
+    navigator.mozL10n = realL10n;
     stubById.restore();
     this.sinon.clock.restore();
+    activeAppStub.restore();
   });
 
   suite('input', function() {
@@ -231,6 +244,38 @@ suite('system/Rocketbar', function() {
       });
       assert.equal(message.action, 'change');
       assert.equal(message.input, 'foo');
+    });
+  });
+
+  suite('defaultTitle', function() {
+    test('input will update', function() {
+      Rocketbar.input.value = '';
+      assert.equal(Rocketbar.input.value, '');
+
+      activeAppStub.restore();
+      this.sinon.stub(AppWindowManager, 'getActiveApp')
+                          .returns({
+                            isHomescreen: true
+                          });
+
+      Rocketbar.defaultTitle();
+
+      // Mock l10n test result
+      assert.equal(Rocketbar.input.value, 'search');
+    });
+
+    test('if expanded, title does not update', function() {
+      Rocketbar.input.value = '';
+      assert.equal(Rocketbar.input.value, '');
+
+      activeAppStub.restore();
+      this.sinon.stub(AppWindowManager, 'getActiveApp')
+                          .returns({
+                            isHomescreen: false
+                          });
+
+      Rocketbar.defaultTitle();
+      assert.equal(Rocketbar.input.value, '');
     });
   });
 
