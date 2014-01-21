@@ -183,7 +183,9 @@ var Rocketbar = {
     }
 
     var detail = e.detail;
-    if (e.type === 'hide') {
+    if (detail.action === 'expand') {
+      this.expand();
+    } else if (detail.action === 'collapse') {
       this.collapse();
     } else if (detail.input) {
       this.input.value = detail.input;
@@ -384,6 +386,7 @@ var Rocketbar = {
    */
   handleHome: function() {
     this.input.value = '';
+    this.collapse();
   },
 
   /**
