@@ -26,6 +26,10 @@ System.prototype = {
     return this.client.findElement('iframe[src*="' + url + '"]');
   },
 
+  getStatusbar: function() {
+    return this.client.findElement('statusbar');
+  },
+
   waitForLaunch: function(url) {
     this.client.apps.launch(url);
     var iframe = this.getAppIframe(url);
