@@ -158,13 +158,13 @@ var StatusBar = {
   },
 
   expand: function sb_expand() {
+    this.element.classList.add('expanded');
     this.background.classList.add('expanded');
-    this.statusbarIcons.classList.add('hidden');
   },
 
   collapse: function sb_collapse() {
+    this.element.classList.remove('expanded');
     this.background.classList.remove('expanded');
-    this.statusbarIcons.classList.remove('hidden');
   },
 
   init: function sb_init() {

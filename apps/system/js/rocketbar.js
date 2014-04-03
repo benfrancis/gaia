@@ -18,6 +18,7 @@ var Rocketbar = {
     this.enabled = false;
     this.expanded = false;
     this.focused = false;
+    this.onHomescreen = false;
 
     // Properties
     this._searchAppURL = null;
@@ -80,7 +81,8 @@ var Rocketbar = {
     window.addEventListener('home', this);
     window.addEventListener('cardviewclosedhome', this);
     window.addEventListener('appopened', this);
-    window.addEventListener('cardviewclosed', this);
+    window.addEventListener('homescreenopened', this);
+    window.addEventListener('stackchanged', this);
 
     // Listen for events from Rocketbar
     this.rocketbar.addEventListener('touchstart', this);
@@ -119,9 +121,6 @@ var Rocketbar = {
       case 'appopened':
         this.collapse(e);
         break;
-      case 'cardviewclosed':
-        this.handleCardViewClosed(e);
-        break;
       case 'touchstart':
       case 'touchmove':
       case 'touchend':
@@ -142,6 +141,12 @@ var Rocketbar = {
       case 'iac-search-results':
         this.handleSearchMessage(e);
         break;
+      case 'homescreenopened':
+        this.enterHome(e);
+        break;
+      case 'stackchanged':
+        this.handleStackChanged(e);
+        break;
     }
   },
 
@@ -157,7 +162,8 @@ var Rocketbar = {
     window.removeEventListener('home', this);
     window.removeEventListener('cardviewclosedhome', this);
     window.removeEventListener('appopened', this);
-    window.removeEventListener('cardviewclosed', this);
+    window.removeEventListener('homescreenopened', this);
+    window.removeEventListener('stackchanged', this);
 
     // Stop listening for events from Rocketbar
     this.rocketbar.removeEventListener('touchstart', this);
@@ -208,6 +214,31 @@ var Rocketbar = {
   },
 
   /**
+   * Put Rocketbar into homescreen state.
+   */
+  enterHome: function() {
+    if (this.onHomescreen) {
+      return;
+    }
+    this.onHomescreen = true;
+    this.screen.classList.add('home');
+    if (!this.expanded) {
+      this.expand();
+    }
+  },
+
+  /**
+   * Take Rocketbar out of homescreen state.
+   */
+  exitHome: function() {
+    if (!this.onHomescreen) {
+      return;
+    }
+    this.onHomescreen = false;
+    this.screen.classList.remove('home');
+  },
+
+  /**
    * Show the Rocketbar results pane.
    */
   showResults: function() {
@@ -234,7 +265,8 @@ var Rocketbar = {
     this.showResults();
     window.dispatchEvent(new CustomEvent('taskmanagershow'));
     this.input.value = '';
-    this.titleContent.textContent = navigator.mozL10n.get('search');
+    this.titleContent.textContent =
+      navigator.mozL10n.get('search-or-enter-address');
   },
 
   /**
@@ -247,7 +279,11 @@ var Rocketbar = {
     this.title.classList.add('hidden');
     this.form.classList.remove('hidden');
     this.input.select();
+    if (this.onHomescreen) { // Suppress home style to hide statusbar icons
+      this.screen.classList.remove('home');
+    }
     this.focused = true;
+    this.showResults();
     this.loadSearchApp();
   },
 
@@ -264,6 +300,9 @@ var Rocketbar = {
     this.input.blur();
     this.title.classList.remove('hidden');
     this.form.classList.add('hidden');
+    if (this.onHomescreen) { // Reinstate home style to show statusbar icons
+      this.screen.classList.add('home');
+    }
     this.focused = false;
   },
 
@@ -275,6 +314,9 @@ var Rocketbar = {
   handleAppChange: function(e) {
     this.handleLocationChange(e);
     this.handleTitleChange(e);
+    this.exitHome();
+    this.collapse();
+    this.hideResults();
   },
 
   /**
@@ -313,10 +355,12 @@ var Rocketbar = {
    * Handle press of hardware home button.
    */
   handleHome: function() {
-    this.titleContent.textContent = navigator.mozL10n.get('search');
+    this.titleContent.textContent =
+      navigator.mozL10n.get('search-or-enter-address');
     this.input.value = '';
     this.hideResults();
-    this.collapse();
+    this.enterHome();
+    this.blur();
   },
 
   /**
@@ -335,7 +379,8 @@ var Rocketbar = {
         dy = parseInt(e.touches[0].pageY) - parseInt(this._touchStart);
         if (dy > this.EXPANSION_THRESHOLD) {
           this.expand();
-        } else if (dy < (this.EXPANSION_THRESHOLD * -1)) {
+        } else if (dy < (this.EXPANSION_THRESHOLD * -1) &&
+          !this.onHomescreen) {
           this.collapse();
         }
         if (dy > this.TASK_MANAGER_THRESHOLD && !this.focused) {
@@ -372,6 +417,7 @@ var Rocketbar = {
   handleTransitionEnd: function() {
     if (this.expanded && this._wasClicked) {
       this.focus();
+      this._wasClicked = false;
     }
   },
 
@@ -420,13 +466,11 @@ var Rocketbar = {
   },
 
   /**
-   * Handle card view being closed.
-   *
-   * @param {Event} e cardviewclosed event.
+   * Handle change to sheets stack.
    */
-  handleCardViewClosed: function(e) {
-    // If closed because no more cards, focus the Rocketbar.
-    if (e.detail == null) {
+  handleStackChanged: function(e) {
+    // Focus the Rocketbar in cards view when stack length reaches zero.
+    if (this.expanded && e.detail.sheets.length === 0) {
       this.focus();
     }
   },

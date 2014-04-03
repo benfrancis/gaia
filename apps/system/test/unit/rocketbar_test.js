@@ -75,7 +75,8 @@ suite('system/Rocketbar', function() {
     assert.ok(windowAddEventListenerStub.calledWith('home'));
     assert.ok(windowAddEventListenerStub.calledWith('cardviewclosedhome'));
     assert.ok(windowAddEventListenerStub.calledWith('appopened'));
-    assert.ok(windowAddEventListenerStub.calledWith('cardviewclosed'));
+    assert.ok(windowAddEventListenerStub.calledWith('homescreenopened'));
+    assert.ok(windowAddEventListenerStub.calledWith('stackchanged'));
     assert.ok(rocketbarAddEventListenerStub.calledWith('touchstart'));
     assert.ok(rocketbarAddEventListenerStub.calledWith('touchmove'));
     assert.ok(rocketbarAddEventListenerStub.calledWith('touchend'));
@@ -110,7 +111,8 @@ suite('system/Rocketbar', function() {
     assert.ok(windowRemoveEventListenerStub.calledWith('home'));
     assert.ok(windowRemoveEventListenerStub.calledWith('cardviewclosedhome'));
     assert.ok(windowRemoveEventListenerStub.calledWith('appopened'));
-    assert.ok(windowRemoveEventListenerStub.calledWith('cardviewclosed'));
+    assert.ok(windowRemoveEventListenerStub.calledWith('homescreenopened'));
+    assert.ok(windowRemoveEventListenerStub.calledWith('stackchanged'));
     assert.ok(rocketbarRemoveEventListenerStub.calledWith('touchstart'));
     assert.ok(rocketbarRemoveEventListenerStub.calledWith('touchmove'));
     assert.ok(rocketbarRemoveEventListenerStub.calledWith('touchend'));
@@ -174,6 +176,32 @@ suite('system/Rocketbar', function() {
     blurStub.restore();
   });
 
+  test('enterHome() - not already home', function() {
+    Rocketbar.onHomescreen = false;
+    var expandStub = this.sinon.stub(Rocketbar, 'expand');
+    Rocketbar.enterHome();
+    assert.ok(Rocketbar.onHomescreen);
+    assert.ok(Rocketbar.screen.classList.contains('home'));
+    assert.ok(expandStub.calledOnce);
+
+  });
+
+  test ('enterHome() - already home', function() {
+    var expandStub = this.sinon.stub(Rocketbar, 'expand');
+    Rocketbar.onHomescreen = true;
+    Rocketbar.enterHome();
+    assert.ok(Rocketbar.onHomescreen);
+    assert.ok(expandStub.notCalled);
+    expandStub.restore();
+  });
+
+  test ('exitHome()', function() {
+    Rocketbar.onHomescreen = true;
+    Rocketbar.exitHome();
+    assert.ok(!Rocketbar.onHomescreen);
+    assert.ok(!Rocketbar.screen.classList.contains('home'));
+  });
+
   test('showResults()', function() {
     Rocketbar.results.classList.add('hidden');
     Rocketbar.showResults();
@@ -204,6 +232,7 @@ suite('system/Rocketbar', function() {
   });
 
   test('focus()', function() {
+    Rocketbar.onHomescreen = true;
     var loadSearchAppStub = this.sinon.stub(Rocketbar, 'loadSearchApp');
     var handleKeyboardChangeStub = this.sinon.stub(Rocketbar,
       'handleKeyboardChange');
@@ -211,6 +240,7 @@ suite('system/Rocketbar', function() {
     Rocketbar.focus();
     assert.ok(Rocketbar.title.classList.contains('hidden'));
     assert.equal(Rocketbar.form.classList.contains('hidden'), false);
+    assert.equal(Rocketbar.screen.classList.contains('home'), false);
     assert.ok(Rocketbar.focused);
     assert.ok(loadSearchAppStub.calledOnce);
     var event = new CustomEvent('keyboardchange');
@@ -221,6 +251,7 @@ suite('system/Rocketbar', function() {
   });
 
   test('blur() - results hidden', function() {
+    Rocketbar.onHomescreen = true;
     var handleKeyboardChangeStub = this.sinon.stub(Rocketbar,
       'handleKeyboardChange');
     Rocketbar.results.classList.add('hidden');
@@ -228,6 +259,7 @@ suite('system/Rocketbar', function() {
     Rocketbar.blur();
     assert.equal(Rocketbar.title.classList.contains('hidden'), false);
     assert.ok(Rocketbar.form.classList.contains('hidden'));
+    assert.ok(Rocketbar.screen.classList.contains('home'));
     assert.equal(Rocketbar.focused, false);
     var event = new CustomEvent('keyboardchange');
     Rocketbar.body.dispatchEvent(event);
@@ -245,11 +277,20 @@ suite('system/Rocketbar', function() {
       'handleLocationChange');
     var handleTitleChangeStub = this.sinon.stub(Rocketbar,
       'handleTitleChange');
+    var exitHomeStub = this.sinon.stub(Rocketbar, 'exitHome');
+    var collapseStub = this.sinon.stub(Rocketbar, 'collapse');
+    var hideResultsStub = this.sinon.stub(Rocketbar, 'hideResults');
      Rocketbar.handleAppChange();
      assert.ok(handleLocationChangeStub.calledOnce);
      assert.ok(handleTitleChangeStub.calledOnce);
+     assert.ok(exitHomeStub.calledOnce);
+     assert.ok(collapseStub.calledOnce);
+     assert.ok(hideResultsStub.calledOnce);
      handleLocationChangeStub.restore();
      handleTitleChangeStub.restore();
+     exitHomeStub.restore();
+     collapseStub.restore();
+     hideResultsStub.restore();
   });
 
   test('handleTitleChange()', function() {
@@ -326,14 +367,19 @@ suite('system/Rocketbar', function() {
         return 'Search';
       }
     };
-    var collapseStub = this.sinon.stub(Rocketbar, 'collapse');
     var hideResultsStub = this.sinon.stub(Rocketbar, 'hideResults');
+    var enterHomeStub = this.sinon.stub(Rocketbar, 'enterHome');
+    var blurStub = this.sinon.stub(Rocketbar, 'blur');
     Rocketbar.input.value = 'value to clear';
     Rocketbar.handleHome();
     assert.ok(hideResultsStub.calledOnce);
-    assert.ok(collapseStub.calledOnce);
     assert.equal(Rocketbar.input.value, '');
     assert.equal(Rocketbar.titleContent.textContent, 'Search');
+    assert.ok(enterHomeStub.called);
+    assert.ok(blurStub.calledOnce);
+    hideResultsStub.restore();
+    enterHomeStub.restore();
+    blurStub.restore();
   });
 
   test('handleTouch() - touchstart', function() {
@@ -464,6 +510,7 @@ suite('system/Rocketbar', function() {
     Rocketbar._wasClicked = true;
     Rocketbar.handleTransitionEnd();
     assert.ok(focusStub.calledOnce);
+    assert.ok(!Rocketbar._wasClicked);
     focusStub.restore();
   });
 
@@ -514,28 +561,29 @@ suite('system/Rocketbar', function() {
     Rocketbar.handleKeyboardChange(event);
   });
 
-  test('handleCardViewClosed()', function() {
+  test ('handleStackChanged() - empty stack', function() {
+    Rocketbar.expanded = true;
     var focusStub = this.sinon.stub(Rocketbar, 'focus');
-
-    // Closed because card selected.
     var event = {
-      type: 'cardviewclosed',
-      detail: [
-        {
-          newStackPosition: 1
-        }
-      ]
+      detail: {
+        sheets: []
+      }
     };
-    Rocketbar.handleCardViewClosed(event);
-    assert.ok(focusStub.notCalled);
-
-    // Closed because no more cards.
-    event = {
-      type: 'cardviewclosed'
-    };
-    Rocketbar.handleCardViewClosed(event);
+    Rocketbar.handleStackChanged(event);
     assert.ok(focusStub.calledOnce);
+    focusStub.restore();
+  });
 
+test ('handleStackChanged() - non-empty stack', function() {
+    Rocketbar.expanded = true;
+    var focusStub = this.sinon.stub(Rocketbar, 'focus');
+    var event = {
+      detail: {
+        sheets: ['a', 'b', 'c']
+      }
+    };
+    Rocketbar.handleStackChanged(event);
+    assert.ok(focusStub.notCalled);
     focusStub.restore();
   });
 

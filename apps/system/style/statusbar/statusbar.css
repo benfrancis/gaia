@@ -20,6 +20,10 @@
   transform: scaleY(1);
 }
 
+#screen.home:not(.cards-view) #statusbar-background {
+  transform: scaleY(1.5);
+}
+
 #statusbar {
   position: fixed;
   width: 100%;
@@ -68,11 +72,16 @@
   white-space: nowrap;
 }
 
-#statusbar-icons.hidden {
+#screen:not(.home) #statusbar.expanded #statusbar-icons {
   opacity: 0;
 }
 
-body:not(.rb-enabled) #statusbar-icons {
+#screen.cards-view #statusbar.expanded #statusbar-icons {
+  opacity: 0;
+}
+
+body:not(.rb-enabled) #statusbar-icons,
+#screen.home #statusbar-icons {
   width: calc(100% - 0.8rem);
 }
 

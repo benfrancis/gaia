@@ -26,8 +26,34 @@ marionette('Rocketbar', function() {
     system.waitForStartup();
   });
 
+  test('Rocketbar is expanded on homescreen', function() {
+    // Check that Rocketbar is expanded
+    var element = rocketbar.rocketbar;
+    client.waitFor(function() {
+      var rocketbarClass = element.getAttribute('class');
+      return rocketbarClass.indexOf('expanded') != -1;
+    });
+    // Check that Rocketbar is in the home state
+    var screen = rocketbar.screen;
+    client.waitFor(function() {
+      var screenClass = screen.getAttribute('class');
+      return screenClass.indexOf('home') != -1;
+    });
+  });
+
   test('Focus', function() {
+    // Wait for Rocketbar to enter home state
+    var screen = rocketbar.screen;
+    client.waitFor(function() {
+      var screenClass = screen.getAttribute('class');
+      return screenClass.indexOf('home') != -1;
+    });
     rocketbar.focus();
+    // Check that focussed Rocketbar no longer has home style
+    client.waitFor(function() {
+      var screenClass = screen.getAttribute('class');
+      return screenClass.indexOf('home') == -1;
+    });
   });
 
   test('Navigate to URL', function() {
