@@ -20,7 +20,7 @@
   transform: scaleY(1);
 }
 
-body.rb-enabled #screen.home:not(.cards-view):not(.rocketbar-focused) #statusbar-background {
+body.rb-enabled #screen:not(.cards-view) #statusbar-background.on-homescreen:not(.rocketbar-focused) {
   transform: scaleY(1.5);
 }
 
@@ -72,8 +72,8 @@ body.rb-enabled #screen.home:not(.cards-view):not(.rocketbar-focused) #statusbar
   white-space: nowrap;
 }
 
-#screen:not(.home) #statusbar.expanded #statusbar-icons,
-#screen.home.rocketbar-focused #statusbar-icons {
+#statusbar.expanded:not(.on-homescreen) #statusbar-icons,
+#statusbar.on-homescreen.rocketbar-focused #statusbar-icons {
   opacity: 0;
 }
 
@@ -82,7 +82,7 @@ body.rb-enabled #screen.home:not(.cards-view):not(.rocketbar-focused) #statusbar
 }
 
 body:not(.rb-enabled) #statusbar-icons,
-body.rb-enabled #screen.home #statusbar-icons {
+body.rb-enabled #statusbar.on-homescreen #statusbar-icons {
   width: calc(100% - 0.8rem);
 }
 

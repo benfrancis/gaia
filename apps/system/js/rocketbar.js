@@ -208,6 +208,7 @@ var Rocketbar = {
     }
     this.expanded = false;
     this.rocketbar.classList.remove('expanded');
+    this.exitHome();
     this.hideResults();
     this.blur();
     window.dispatchEvent(new CustomEvent('rocketbarcollapse'));
@@ -224,6 +225,7 @@ var Rocketbar = {
     if (!this.expanded) {
       this.expand();
     }
+    this.rocketbar.classList.add('on-homescreen');
   },
 
   /**
@@ -234,6 +236,7 @@ var Rocketbar = {
       return;
     }
     this.onHomescreen = false;
+    this.rocketbar.classList.remove('on-homescreen');
   },
 
   /**
@@ -274,6 +277,7 @@ var Rocketbar = {
     // Swallow keyboard change events so homescreen does not resize
     this.body.addEventListener('keyboardchange',
       this.handleKeyboardChange, true);
+    this.rocketbar.classList.add('focused');
     this.title.classList.add('hidden');
     this.form.classList.remove('hidden');
     this.input.select();
@@ -281,6 +285,8 @@ var Rocketbar = {
     this.focused = true;
     this.showResults();
     this.loadSearchApp();
+    var event = new CustomEvent('rocketbarfocus');
+    window.dispatchEvent(event);
   },
 
   /**
@@ -294,10 +300,13 @@ var Rocketbar = {
       return;
     }
     this.input.blur();
+    this.rocketbar.classList.remove('focused');
     this.title.classList.remove('hidden');
     this.form.classList.add('hidden');
     this.screen.classList.remove('rocketbar-focused');
     this.focused = false;
+    var event = new CustomEvent('rocketbarblur');
+    window.dispatchEvent(event);
   },
 
   /**
