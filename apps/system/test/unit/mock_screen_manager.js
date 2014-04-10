@@ -7,12 +7,14 @@
 
 var MockScreenManager = (function() {
   var screenEnabled = true;
+  var screen = document.createElement('div');
 
   function turnScreenOn() {
   }
 
   return {
     turnScreenOn: turnScreenOn,
-    screenEnabled: screenEnabled
+    screenEnabled: screenEnabled,
+    screen: screen
   };
 })();

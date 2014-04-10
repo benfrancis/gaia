@@ -9,12 +9,13 @@ requireApp('system/test/unit/mock_applications.js');
 requireApp('system/test/unit/mock_trusted_ui_manager.js');
 requireApp('system/test/unit/mock_ftu_launcher.js');
 requireApp('system/test/unit/mock_layout_manager.js');
+requireApp('system/test/unit/mock_screen_manager.js');
 requireApp('system/shared/test/unit/mocks/mock_settings_listener.js');
 requireApp('system/js/homescreen_launcher.js');
 
 var mocksForHomescreenLauncher = new MocksHelper([
   'Applications', 'HomescreenWindow', 'TrustedUIManager',
-  'FtuLauncher', 'SettingsListener', 'LayoutManager'
+  'FtuLauncher', 'SettingsListener', 'LayoutManager', 'ScreenManager'
 ]).init();
 
 suite('system/HomescreenLauncher', function() {
@@ -153,6 +154,22 @@ suite('system/HomescreenLauncher', function() {
         }
       });
       assert.isTrue(stubFadeOut.called);
+    });
+
+    test('homescreenopened', function() {
+      ScreenManager.screen.classList.remove('home');
+      window.homescreenLauncher.handleEvent({
+        type: 'homescreenopened'
+      });
+      assert.ok(ScreenManager.screen.classList.contains('home'));
+    });
+
+    test('homescreenclosing', function() {
+      ScreenManager.screen.classList.add('home');
+      window.homescreenLauncher.handleEvent({
+        type: 'homescreenclosing'
+      });
+      assert.ok(!ScreenManager.screen.classList.contains('home'));
     });
 
     test('keyboard showed', function() {

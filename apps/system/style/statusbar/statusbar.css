@@ -20,7 +20,7 @@
   transform: scaleY(1);
 }
 
-#screen.home:not(.cards-view) #statusbar-background {
+body.rb-enabled #screen.home:not(.cards-view):not(.rocketbar-focused) #statusbar-background {
   transform: scaleY(1.5);
 }
 
@@ -72,7 +72,8 @@
   white-space: nowrap;
 }
 
-#screen:not(.home) #statusbar.expanded #statusbar-icons {
+#screen:not(.home) #statusbar.expanded #statusbar-icons,
+#screen.home.rocketbar-focused #statusbar-icons {
   opacity: 0;
 }
 
@@ -81,7 +82,7 @@
 }
 
 body:not(.rb-enabled) #statusbar-icons,
-#screen.home #statusbar-icons {
+body.rb-enabled #screen.home #statusbar-icons {
   width: calc(100% - 0.8rem);
 }
 

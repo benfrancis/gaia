@@ -19,7 +19,7 @@
   transform: scale(1);
 }
 
-#screen.home:not(.cards-view) #rocketbar {
+body.rb-enabled #screen.home:not(.cards-view):not(.rocketbar-focused) #rocketbar {
   transform: scale(1) translateY(2.4rem);
 }
 

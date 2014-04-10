@@ -1,5 +1,6 @@
 'use strict';
-/* global applications, SettingsListener, HomescreenWindow, TrustedUIManager */
+/* global applications, SettingsListener, HomescreenWindow, TrustedUIManager,
+   ScreenManager */
 (function(exports) {
   /**
    * HomescreenLauncher is responsible for launching the homescreen window
@@ -129,6 +130,9 @@
       window.addEventListener('cardviewbeforeclose', this);
       window.addEventListener('shrinking-start', this);
       window.addEventListener('shrinking-stop', this);
+      window.addEventListener('home', this);
+      window.addEventListener('homescreenopened', this);
+      window.addEventListener('homescreenclosing', this);
       return this;
     },
 
@@ -155,6 +159,9 @@
       window.removeEventListener('cardviewbeforeclose', this);
       window.removeEventListener('shrinking-start', this);
       window.removeEventListener('shrinking-stop', this);
+      window.removeEventListener('home', this);
+      window.removeEventListener('homescreenopened', this);
+      window.removeEventListener('homescreenclosing', this);
       this._started = false;
     },
 
@@ -208,6 +215,13 @@
         case 'shrinking-stop':
           // To resume the homescreen after shrinking UI is over.
           this.getHomescreen().showFadeOverlay();
+          break;
+        case 'home':
+        case 'homescreenopened':
+          ScreenManager.screen.classList.add('home');
+          break;
+        case 'homescreenclosing':
+          ScreenManager.screen.classList.remove('home');
           break;
       }
     },

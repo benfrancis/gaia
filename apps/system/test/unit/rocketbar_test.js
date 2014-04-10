@@ -181,9 +181,7 @@ suite('system/Rocketbar', function() {
     var expandStub = this.sinon.stub(Rocketbar, 'expand');
     Rocketbar.enterHome();
     assert.ok(Rocketbar.onHomescreen);
-    assert.ok(Rocketbar.screen.classList.contains('home'));
     assert.ok(expandStub.calledOnce);
-
   });
 
   test ('enterHome() - already home', function() {
@@ -199,7 +197,6 @@ suite('system/Rocketbar', function() {
     Rocketbar.onHomescreen = true;
     Rocketbar.exitHome();
     assert.ok(!Rocketbar.onHomescreen);
-    assert.ok(!Rocketbar.screen.classList.contains('home'));
   });
 
   test('showResults()', function() {
@@ -232,7 +229,6 @@ suite('system/Rocketbar', function() {
   });
 
   test('focus()', function() {
-    Rocketbar.onHomescreen = true;
     var loadSearchAppStub = this.sinon.stub(Rocketbar, 'loadSearchApp');
     var handleKeyboardChangeStub = this.sinon.stub(Rocketbar,
       'handleKeyboardChange');
@@ -240,7 +236,7 @@ suite('system/Rocketbar', function() {
     Rocketbar.focus();
     assert.ok(Rocketbar.title.classList.contains('hidden'));
     assert.equal(Rocketbar.form.classList.contains('hidden'), false);
-    assert.equal(Rocketbar.screen.classList.contains('home'), false);
+    assert.ok(Rocketbar.screen.classList.contains('rocketbar-focused'));
     assert.ok(Rocketbar.focused);
     assert.ok(loadSearchAppStub.calledOnce);
     var event = new CustomEvent('keyboardchange');
@@ -251,7 +247,6 @@ suite('system/Rocketbar', function() {
   });
 
   test('blur() - results hidden', function() {
-    Rocketbar.onHomescreen = true;
     var handleKeyboardChangeStub = this.sinon.stub(Rocketbar,
       'handleKeyboardChange');
     Rocketbar.results.classList.add('hidden');
@@ -259,7 +254,7 @@ suite('system/Rocketbar', function() {
     Rocketbar.blur();
     assert.equal(Rocketbar.title.classList.contains('hidden'), false);
     assert.ok(Rocketbar.form.classList.contains('hidden'));
-    assert.ok(Rocketbar.screen.classList.contains('home'));
+    assert.ok(!Rocketbar.screen.classList.contains('rocketbar-focused'));
     assert.equal(Rocketbar.focused, false);
     var event = new CustomEvent('keyboardchange');
     Rocketbar.body.dispatchEvent(event);

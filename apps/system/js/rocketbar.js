@@ -221,7 +221,6 @@ var Rocketbar = {
       return;
     }
     this.onHomescreen = true;
-    this.screen.classList.add('home');
     if (!this.expanded) {
       this.expand();
     }
@@ -235,7 +234,6 @@ var Rocketbar = {
       return;
     }
     this.onHomescreen = false;
-    this.screen.classList.remove('home');
   },
 
   /**
@@ -279,9 +277,7 @@ var Rocketbar = {
     this.title.classList.add('hidden');
     this.form.classList.remove('hidden');
     this.input.select();
-    if (this.onHomescreen) { // Suppress home style to hide statusbar icons
-      this.screen.classList.remove('home');
-    }
+    this.screen.classList.add('rocketbar-focused');
     this.focused = true;
     this.showResults();
     this.loadSearchApp();
@@ -300,9 +296,7 @@ var Rocketbar = {
     this.input.blur();
     this.title.classList.remove('hidden');
     this.form.classList.add('hidden');
-    if (this.onHomescreen) { // Reinstate home style to show statusbar icons
-      this.screen.classList.add('home');
-    }
+    this.screen.classList.remove('rocketbar-focused');
     this.focused = false;
   },
 
