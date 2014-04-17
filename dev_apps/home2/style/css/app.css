@@ -8,6 +8,10 @@ html, body, .icons {
   margin: 0;
 }
 
+.rb-enabled #icons {
+  padding-top: 5.5rem;
+}
+
 .icons {
   overflow-y: scroll;
   overflow-x: hidden;
