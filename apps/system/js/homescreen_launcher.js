@@ -220,10 +220,10 @@
           this.getHomescreen().showFadeOverlay();
           break;
         case 'homescreenopening':
-          this._screen.classList.add('on-homescreen');
+          //this._screen.classList.add('on-homescreen');
           break;
         case 'homescreenclosing':
-          this._screen.classList.remove('on-homescreen');
+          //this._screen.classList.remove('on-homescreen');
           break;
         case 'software-button-enabled':
         case 'software-button-disabled':
