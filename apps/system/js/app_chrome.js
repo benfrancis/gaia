@@ -57,7 +57,12 @@
 
     if (this.isSearchApp()) {
       this.app.element.classList.add('search-app');
+      this.windowsButton.disabled = false;
       this.title.textContent = _('search-or-enter-address');
+    }
+    
+    if (this.app.isBrowser()) {
+      this.menuButton.disabled = false;
     }
 
     if (chrome.bar) {
@@ -98,8 +103,9 @@
                <button type="button" class="reload-button"></button>
                <button type="button" class="stop-button"></button>
              </div>
-             <button type="button" class="menu-button"
+             <button type="button" class="menu-button" disabled
                alt="Menu"></button>
+             <button type="button" class="windows-button" disabled></button>
             </div>`;
   };
 
@@ -155,6 +161,7 @@
     this.stopButton = this.element.querySelector('.stop-button');
     this.backButton = this.element.querySelector('.back-button');
     this.menuButton = this.element.querySelector('.menu-button');
+    this.windowsButton = this.element.querySelector('.windows-button');
     this.title = this.element.querySelector('.title');
 
     this.bar = this.element.querySelector('.bar');
@@ -253,6 +260,10 @@
         this.showOverflowMenu();
         break;
 
+      case this.windowsButton:
+        this.showWindows();
+        break;
+
       case this._overflowMenu:
         this.hideOverflowMenu();
         break;
@@ -304,6 +315,7 @@
       this.title.addEventListener('click', this);
       this.scrollable.addEventListener('scroll', this);
       this.menuButton.addEventListener('click', this);
+        this.windowsButton.addEventListener('click', this);
     } else {
       this.header.addEventListener('action', this);
     }
@@ -324,6 +336,7 @@
     if (this.useCombinedChrome()) {
       this.stopButton.removeEventListener('click', this);
       this.menuButton.removeEventListener('click', this);
+      this.windowsButton.removeEventListener('click', this);
       this.reloadButton.removeEventListener('click', this);
       this.backButton.removeEventListener('click', this);
       this.forwardButton.removeEventListener('click', this);
@@ -697,6 +710,10 @@
         !this.overflowMenu.classList.contains('showing')) {
       this.overflowMenu.classList.add('hiding');
     }
+  };
+  
+  AppChrome.prototype.showWindows = function ac_showWindows() {
+    window.dispatchEvent(new CustomEvent('taskmanagershow'));
   };
 
   AppChrome.prototype.onShare = function ac_onShare() {
