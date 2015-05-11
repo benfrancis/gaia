@@ -7,7 +7,7 @@ html, body {
   height: 100%;
   font-size: 10px;
   box-sizing: border-box;
-  background: #fff;
+  background: #4D4D4D;
   overflow-x: hidden;
 }
 
@@ -15,8 +15,7 @@ body {
   padding: 0.5rem 1rem;
 }
 
-h2,
-#history h3:first-child {
+h2 {
   text-align: center;
   border-top: 0.2rem solid #e5e5e5;
   font-size: 1.4rem;
@@ -24,6 +23,39 @@ h2,
   margin-bottom: -0.9rem;
   color: #a6a6a6;
   font-style: normal;
+  float: left;
+}
+
+section .bb-tablist {
+  align-items: unset;
+}
+
+section .bb-tablist li {
+  background-color: #4D4D4D;
+}
+
+section .bb-tablist li a {
+  color: #fff;
+}
+
+section .bb-tablist > li > a[aria-selected="true"],
+section .bb-tablist > li > button[aria-selected="true"] {
+  color: #fff;
+}
+
+section .bb-tablist > li > a[aria-selected="true"]:after,
+section .bb-tablist > li > button[aria-selected="true"]:after {
+  border-bottom: 0.3rem solid #CB7600;
+}
+
+section .bb-tablist .bb-tabpanel,
+section .bb-tablist::before {
+  bottom: unset;
+  top: 4.5rem;
+}
+
+section .bb-tablist::before {
+  border: none;
 }
 
 h2 span,
@@ -39,6 +71,7 @@ h2 span,
 #top-sites {
   overflow: auto;
   margin-top: 1rem;
+  padding-top: 1rem;
 }
 
 #top-sites .top-site:nth-child(2n) {
@@ -87,7 +120,7 @@ h2 span,
   border-bottom: 0.1rem solid rgba(0, 0, 0, 0.1);
   padding: 1rem 0.7rem;
   overflow: hidden;
-  color: #4d4d4d;
+  color: #fff;
 }
 
 #history .result * {

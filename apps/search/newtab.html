@@ -22,16 +22,32 @@
 
     <script defer src="js/newtab.js"></script>
     <script defer src="shared/js/icons_helper.js"></script>
+    <script defer src="shared/js/card.js"></script>
+    <link href="shared/style/card.css" rel="stylesheet" type="text/css">
     <script defer src="js/providers/provider.js"></script>
     <script defer src="js/providers/grid_provider.js"></script>
     <script defer src="js/providers/places.js"></script>
+    <link href="shared/style/tabs.css" rel="stylesheet" type="text/css">
+    <script defer src="shared/js/accessibility_helper.js"></script>
   </head>
-  <body>
-      <h2 id="top-sites-header"><span data-l10n-id="top-sites"></span></h2>
-      <section id="top-sites" aria-labelledby="top-sites-header"></section>
-      <gaia-buttons class="inline">
-        <button type="submit" data-l10n-id="new-private-window" id="private-window" class="full"></button>
-      </gaia-buttons>
-      <section id="history" class="local"></section>
+  <body role="application">
+      <section role="region">
+        <ul role="tablist" class="bb-tablist">
+          <li id="panel1" role="presentation">
+            <a id="top-sites-header" href="#top-sites" role="tab" aria-controls="top-sites" data-l10n-id="top-sites" aria-selected="true"></a>
+            <section class="bb-tabpanel" role="tabpanel" id="top-sites" aria-labelledby="top-sites-header"></section>
+          </li>
+          <li id="panel2" role="presentation">
+            <a id="top-pages-header" href="#top-pages" role="tab" aria-controls="top-pages" data-l10n-id="top-pages"></a>
+            <section class="bb-tabpanel" role="tabpanel" id="top-pages" aria-labelledby="top-pages-header"></section>
+          </li>
+          <li id="panel3" role="presentation">
+            <a id="history-header" href="#history" role="tab" aria-controls="history" data-l10n-id="history"></a>
+            <section class="bb-tabpanel" role="tabpanel" id="history" class="local">
+              aa
+            </section>
+          </li>
+        </ul>
+      </section>
   </body>
 </html>

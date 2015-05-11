@@ -3,6 +3,8 @@
 /* globals DateHelper */
 /* globals asyncStorage */
 /* globals LazyLoader */
+/* globals Card */
+
 (function(exports) {
 
   'use strict';
@@ -18,11 +20,13 @@
   var STORE_NAME = 'places';
 
   var topSitesWrapper = document.getElementById('top-sites');
+  var topPagesWrapper = document.getElementById('top-pages');
   var historyWrapper = document.getElementById('history');
 
   // These elements are only included in the newtab page.
   if (topSitesWrapper && historyWrapper) {
     topSitesWrapper.addEventListener('click', itemClicked);
+    topPagesWrapper.addEventListener('click', itemClicked);
     historyWrapper.addEventListener('click', itemClicked);
   }
 
@@ -225,7 +229,7 @@
 
   function showStartPage() {
 
-    if (!topSitesWrapper || !historyWrapper) {
+    if (!topPagesWrapper || !topSitesWrapper || !historyWrapper) {
       return;
     }
 
@@ -245,35 +249,14 @@
     store.read('frecency', MAX_TOPSITES_RESULTS, function(results) {
       var docFragment = document.createDocumentFragment();
       results.forEach(function(x) {
-        docFragment.appendChild(formatTopResult(x));
+        var card = new Card(x);
+        docFragment.appendChild(card.element);
       });
-      topSitesWrapper.innerHTML = '';
-      topSitesWrapper.appendChild(docFragment);
+      topPagesWrapper.innerHTML = '';
+      topPagesWrapper.appendChild(docFragment);
     });
-  }
 
-  function formatTopResult(result) {
-    var div = document.createElement('div');
-    var span = document.createElement('span');
-    if (result.title) {
-      span.setAttribute('dir', 'auto');
-      span.textContent = result.title;
-    } else {
-      span.setAttribute('dir', 'ltr');
-      span.textContent = result.url;
-    }
-    div.dataset.url = result.url;
-    div.classList.add('top-site');
-    div.appendChild(span);
-    div.setAttribute('role', 'link');
-
-    if (result.screenshot || result.tile) {
-      var img = result.screenshot || result.tile;
-      var imgUrl = (typeof img === 'string') ? img : URL.createObjectURL(img);
-      div.style.backgroundImage = 'url(' + imgUrl + ')';
-    }
-
-    return div;
+    // We should populate topSites here
   }
 
   function matchesFilter(value, filter) {
