@@ -212,7 +212,7 @@
     this.title = this.element.querySelector('.title');
     this.siteIcon = this.element.querySelector('.site-icon');
     this.pinDialog = this.element.querySelector('.pin-dialog');
-    this.pinButton = this.element.querySelector('.pin-button')
+    this.pinButton = this.element.querySelector('.pin-button');
     this.closePin = this.pinDialog.querySelector('a[data-action="cancel"]');
     this.sslIndicator =
       this.element.querySelector('.js-chrome-ssl-information');
@@ -809,7 +809,8 @@
     if (evt.detail && evt.detail.type === 'fatal') {
       return;
     }
-    if (this.useCombinedChrome() && this.app.config.chrome.scrollable && !this.pinned) {
+    if (this.useCombinedChrome() &&
+      this.app.config.chrome.scrollable && !this.pinned) {
       // When we get an error, keep the rocketbar maximized.
       this.element.classList.add('maximized');
       this.containerElement.classList.remove('scrollable');
@@ -1011,71 +1012,40 @@
     const ICON_SIZE = 32;
 
     return new Promise((resolve, reject) => {
-      var iconURL = null;
-
-      // Look for an icon in the manifest.
       if (this.app.webManifestURL) {
-        WebManifestHelper
-          .getManifest(this.app.webManifestURL)
+        WebManifestHelper.getManifest(this.app.webManifestURL)
           .then(webManifest => {
-            iconURL = WebManifestHelper.iconURLForSize(webManifest,
-              this.app.webManifestURL, ICON_SIZE);
+            var siteObj = {
+              webManifestUrl: this.app.webManifestURL,
+              webManifest: webManifest
+            };
 
-            if (iconURL && iconURL.href) {
-              console.log('Icon from web manifest', iconURL.href);
-              resolve(iconURL.href);
-            }
-
-            // @TODO Try other methods if no icons are listed in the manifest.
+            resolve(this.getIconBlob(this.app.origin, ICON_SIZE,
+              {icons: this.app.favicons}, siteObj));
+          })
+          .catch(() => {
+            reject(`Can't get the web manifest file.`);
           });
+      } else {
+        resolve(this.getIconBlob(this.app.origin, ICON_SIZE,
+          {icons: this.app.favicons}));
       }
+    });
+  };
 
-      // If not, is there an apple touch tag / favicon?
-      else if (Object.keys(this.app.favicons).length) {
-        var dist = Infinity;
-        var iconCandidate = {};
+  AppChrome.prototype.getIconBlob = function ac_getIconBlob(origin, iconSize,
+    placeObj = {}, siteObj = {}) {
 
-        // Look for an favicon without size as the fallback if present.
-        for (iconCandidate in this.app.favicons) {
-          if (!this.app.favicons[iconCandidate].sizes.length) {
-            iconURL = iconCandidate;
-          }
-        }
+    return new Promise((resolve, reject) => {
+      IconsHelper.getIcon(origin, iconSize, placeObj, siteObj)
+        .then(iconBlob => {
+          var iconUrl = URL.createObjectURL(iconBlob.blob);
 
-        // Then look for the best candidate in favicons with sizes.
-        for (iconCandidate in this.app.favicons) {
-          if (this.app.favicons[iconCandidate].sizes.length) {
-            var width = this.app.favicons[iconCandidate].sizes[0].split('x')[0];
-            var parsedSize = parseInt(width);
-            if (Math.abs(parsedSize - ICON_SIZE) < dist) {
-              iconURL = iconCandidate;
-              dist = Math.abs(parsedSize - ICON_SIZE);
-            }
-          }
-        }
-
-        if (iconURL) {
-          console.log('Icon from meta tags', iconURL);
-          resolve(iconURL);
-        }
-      }
-
-      else {
-        // Otherwise, we look for a favicon.ico file in the origin.
-        var o = this.getOriginFromURL(this.app.origin);
-        iconURL = `${o}/favicon.ico#-moz-resolution=${ICON_SIZE},${ICON_SIZE}`;
-
-        // Does it even exist?
-        var img = document.createElement('img');
-        img.src = iconURL;
-        img.onerror = () => {
-          reject('No favicon available');
-        };
-        img.onload = () => {
-          console.log('Icon from origin/favicon.ico', iconURL);
-          resolve(iconURL);
-        };
-      }
+          resolve(iconUrl);
+        })
+        .catch(err => {
+          reject(err);
+        });
     });
   };
 

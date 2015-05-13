@@ -6,26 +6,102 @@
  *  different sources.
  */
 (function IconsHelper(exports) {
+  const FETCH_XHR_TIMEOUT = 10000;
 
-  function getIcon(uri, iconSize, placeObj) {
-    var icon;
+  var dataStore = null;
 
-    if (placeObj && placeObj.icons) {
-      icon = getBestIcon(placeObj.icons, iconSize);
+  function getStore() {
+    return new Promise(resolve => {
+      if (dataStore) {
+        return resolve(dataStore);
+      }
+      navigator.getDataStores('icons').then(stores => {
+        dataStore = stores[0];
+        return resolve(dataStore);
+      });
+    });
+  }
+
+  function getIcon(uri, iconSize, placeObj = {}, siteObj = {}) {
+    var iconUrl;
+
+    if (siteObj.webManifestUrl && siteObj.webManifest) {
+      iconUrl = getWebManifestBestIcon(siteObj, iconSize);
+    }
+
+    if (!iconUrl && placeObj.icons) {
+      iconUrl = getBestIcon(placeObj.icons, iconSize);
     }
 
     // If we dont pick up a valid icon, use favicon.ico at the origin
-    if (!icon) {
+    if (!iconUrl) {
       var a = document.createElement('a');
       a.href = uri;
-      icon = a.origin + '/favicon.ico';
+      iconUrl = `${a.origin}/favicon.ico#-moz-resolution=${iconSize},${iconSize}`;
     }
 
-    // Future proofing as eventually this helper will retrieve and
-    // cache the icons, and will need an async API
     return new Promise(resolve => {
-      resolve(icon);
+      getStore().then(iconStore => {
+        iconStore.get(iconUrl).then(iconObj => {
+          if (!iconObj) {
+            return fetchIcon(iconUrl)
+              .then(iconObj => {
+                iconStore.add(iconObj, iconUrl).then(() => {
+                  resolve(iconObj);
+                });
+              });
+          }
+          resolve(iconObj);
+        });
+      });
     });
+  }
+
+  function getWebManifestBestIcon(siteObj, iconSize) {
+    var icons = siteObj.webManifest.icons;
+    var webManifestUrl = siteObj.webManifestUrl;
+
+    if (!icons) {
+      return null;
+    }
+
+    var options = {};
+    icons.forEach(function(icon) {
+      var uri = icon.src;
+      var sizeValue = guessSize(icon.sizes);
+      if (!sizeValue) {
+        return;
+      }
+
+      options[sizeValue] = {
+        uri: uri
+      };
+    });
+
+    var sizes = Object.keys(options).sort(function(a, b) {
+      return a - b;
+    });
+
+    var icon = null;
+
+    // Handle the case of no size info in the whole list
+    // just return the first icon.
+    if (sizes.length === 0) {
+      var iconStrings = Object.keys(icons);
+      if (iconStrings.length > 0) {
+        icon = iconStrings[0];
+      }
+    } else {
+      var preferredSize = getPreferredSize(sizes, iconSize);
+      icon = options[preferredSize];
+    }
+
+    if (!icon) {
+      return null;
+    }
+
+    var iconUrl = new URL(icon.uri, webManifestUrl);
+    return iconUrl.href;
   }
 
   // See bug 1041482, we will need to support better
@@ -74,8 +150,8 @@
       var iconsUrl = 'https://developer.mozilla.org/en-US/' +
         'Apps/Build/Icon_implementation_for_apps#General_icons_for_web_apps';
       console.warn('Warning: The apple-touch icons are being used ' +
-                   'as a fallback only. They will be deprecated in ' +
-                   'the future. See ' + iconsUrl);
+      'as a fallback only. They will be deprecated in ' +
+      'the future. See ' + iconsUrl);
     }
 
     return icon.uri;
@@ -120,7 +196,7 @@
 
     var selected = -1;
     var length = sizes.length;
-    for(var i = 0; i < length && selected < targeted; i++) {
+    for (var i = 0; i < length && selected < targeted; i++) {
       selected = sizes[i];
     }
 
@@ -147,5 +223,38 @@
     // Make public for unit test purposes
     getSizes: getSizes
   };
+
+  function fetchIcon(url) {
+    return new Promise(function(resolve, reject) {
+      var xhr = new XMLHttpRequest({
+        mozAnon: true,
+        mozSystem: true
+      });
+
+      xhr.open('GET', url, true);
+      xhr.responseType = 'blob';
+      xhr.timeout = FETCH_XHR_TIMEOUT;
+
+      // remember that send can throw for some non http protocols. The promise
+      // wrapper here protects us.
+      xhr.send();
+
+      xhr.onload = () => {
+        var status = xhr.status;
+        if (status !== 0 && status !== 200) {
+          reject(new Error(`Got HTTP status ${status} trying to load ${url}`));
+          return;
+        }
+        resolve({
+          blob: xhr.response,
+          size: null
+        });
+      };
+
+      xhr.onerror = xhr.ontimeout = () => {
+        reject(new Error(`Error while HTTP GET: ${url}`));
+      };
+    });
+  }
 
 })(window);
