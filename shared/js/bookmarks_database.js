@@ -158,10 +158,10 @@
     return false;
   }
 
-  function add(data) {
+  function add(data, id) {
     return new Promise(function doAdd(resolve, reject) {
       init().then(function onInitialized() {
-        var id = data.url;
+        var id = id || data.url;
 
         Object.defineProperty(data, 'id', {
           enumerable: true,
@@ -189,10 +189,10 @@
     });
   }
 
-  function put(data) {
+  function put(data, id) {
     return new Promise(function doAdd(resolve, reject) {
       init().then(function onInitialized() {
-        datastore.put(data, data.id).then(function success() {
+        datastore.put(data, id || data.id).then(function success() {
           resolve(); // Bookmark was updated
         }, reject);
       }, reject);

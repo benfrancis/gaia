@@ -12,9 +12,20 @@
   const EDIT_MODE_TRANSITION_STYLE =
     'transform 0.25s ease 0s, height 0s ease 0.5s';
 
+  const DRAG_THRESHOLD = window.devicePixelRatio * 5;
+  const DRAG_DEFAULT_ANIMATION_TIME = 0.2;
+  const DRAG_MINIMUM_ANIMATION_TIME = 0.05;
+  const DRAG_MAXIMUM_EVENT_AGE = 50;
+
   function App() {
     window.performance.mark('navigationLoaded');
     this.grid = document.getElementById('icons');
+    this.pages = document.getElementById('pages-container');
+    this.pageIndicator = document.getElementById('page-indicator');
+    this.pagesVisible = false;
+
+    this.grid.addEventListener('transitionend', this);
+    this.pages.addEventListener('transitionend', this);
 
     this.grid.addEventListener('iconblobdecorated', this);
     this.grid.addEventListener('gaiagrid-iconbloberror', this);
@@ -126,6 +137,13 @@
             window.performance.mark('fullyLoaded');
           });
       }.bind(this));
+
+      this.inDrag = false;
+      this.dragStartPosition = { x: 0, y: 0 };
+      this.dragLastPosition = { x: 0, y: 0 };
+      this.dragLastMove = { dx: 0, delta: 0, time: 0 };
+      this.dragOffset = 0;
+      this.startDragListeners();
     },
 
     renderGrid: function() {
@@ -164,6 +182,87 @@
     exitEditMode: function(e) {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('hashchange'));
+    },
+
+    startDragListeners: function() {
+      document.body.addEventListener('touchstart', this);
+      document.body.addEventListener('touchend', this);
+      document.body.addEventListener('touchcancel', this);
+    },
+
+    stopDragListeners: function() {
+      if (this.inDrag) {
+        this.stopDrag();
+      }
+
+      document.body.removeEventListener('touchstart', this);
+      document.body.removeEventListener('touchend', this);
+      document.body.removeEventListener('touchcancel', this);
+    },
+
+    updateDrag: function(e) {
+      var [pageX, pageY] = e.touches.length ?
+        [e.touches[0].pageX, e.touches[0].pageY] : [e.pageX, e.pageY];
+
+      var lastMove = pageX - this.dragLastPosition.x;
+      if (Math.abs(lastMove) !== 0) {
+        this.dragLastMove.dx = lastMove;
+        this.dragLastMove.delta = e.timeStamp - this.dragLastMove.time;
+        this.dragLastMove.time = e.timeStamp;
+      }
+
+      this.dragLastPosition.x = pageX;
+      this.dragLastPosition.y = pageY;
+
+      if (this.inDrag) {
+        e.preventDefault();
+
+        var width = window.innerWidth;
+        this.dragOffset = Math.min(0,
+          Math.max(-width, (this.pagesVisible ? -width : 0) +
+                           this.dragLastPosition.x - this.dragStartPosition.x));
+        this.grid.style.transform = this.pages.style.transform =
+          'translateX(' + this.dragOffset + 'px)';
+      }
+    },
+
+    stopDrag: function(e) {
+      document.body.classList.remove('dragging');
+      document.body.removeEventListener('touchmove', this);
+
+      if ((this.pagesVisible && this.dragOffset === -width) ||
+          (!this.pagesVisible && this.dragOffset === 0)) {
+        this.inDrag = false;
+        return;
+      }
+
+      document.body.classList.add('was-dragging');
+      var width = window.innerWidth;
+      var animationTime = DRAG_DEFAULT_ANIMATION_TIME;
+      var direction = (this.dragOffset <= -width / 2) ? 1 : 0;
+      if (this.inDrag && e) {
+        if (e.timeStamp - this.dragLastMove.time <= DRAG_MAXIMUM_EVENT_AGE) {
+          var velocity = (this.dragLastMove.delta / 1000) /
+            this.dragLastMove.dx;
+          animationTime = Math.min(DRAG_DEFAULT_ANIMATION_TIME,
+            Math.max(DRAG_MINIMUM_ANIMATION_TIME,
+              Math.abs(velocity) * width));
+          if (animationTime < DRAG_DEFAULT_ANIMATION_TIME) {
+            direction = velocity >= 0 ? 0 : 1;
+          }
+        }
+      }
+
+      this.pagesVisible = (direction === 1);
+      this.pageIndicator.children[direction].classList.add('active');
+      this.pageIndicator.children[1 - direction].classList.remove('active');
+      console.log('Pages visible = ' + this.pagesVisible);
+
+      this.inDrag = false;
+      this.grid.style.transitionDuration =
+        this.pages.style.transitionDuration = animationTime + 's';
+      this.grid.style.transform = this.pages.style.transform =
+        'translateX(' + (width * -direction) + 'px)';
     },
 
     /**
@@ -335,11 +434,15 @@
           //
           // 'height 0s 0.5s' is to apply collapsing animation in edit mode.
           this.grid.style.transition = this.EDIT_MODE_TRANSITION_STYLE;
+
+          this.stopDragListeners();
           break;
 
         case 'editmode-end':
           // Retore the blank transtion property back.
           this.grid.style.transition = '';
+
+          this.startDragListeners();
           break;
 
         // A hashchange event means that the home button was pressed.
@@ -368,6 +471,52 @@
           }
 
           window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
+          break;
+
+        case 'transitionend' :
+          if (e.target === this.grid || e.target === this.pages) {
+            e.target.style.transition = '';
+            document.body.classList.remove('was-dragging');
+          }
+          break;
+
+        case 'touchstart':
+          if (this.inDrag) {
+            this.stopDrag();
+            break;
+          }
+
+          this.dragLastPosition.x = this.dragStartPosition.x =
+            e.touches[0].pageX;
+          this.dragLastPosition.y = this.dragStartPosition.y =
+            e.touches[0].pageY;
+          this.dragLastMove.dx = this.dragLastMove.delta = 0;
+          this.dragLastMove.time = e.timeStamp;
+          this.dragOffset = this.pagesVisible ? -window.innerWidth : 0;
+
+          document.body.addEventListener('touchmove', this);
+          break;
+
+        case 'touchmove':
+          this.updateDrag(e);
+
+          if (!this.inDrag) {
+            var dx = e.touches[0].pageX - this.dragStartPosition.x;
+            var dy = e.touches[0].pageY - this.dragStartPosition.y;
+
+            if (Math.abs(dy) > DRAG_THRESHOLD) {
+              document.body.removeEventListener('touchmove', this);
+            } else if (Math.abs(dx) > DRAG_THRESHOLD) {
+              this.inDrag = true;
+              document.body.classList.add('dragging');
+            }
+          }
+          break;
+
+        case 'touchcancel':
+        case 'touchend':
+          this.stopDrag(e);
+          break;
       }
     }
   };

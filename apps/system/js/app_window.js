@@ -5,12 +5,15 @@
 /* global BrowserFrame */
 /* global layoutManager */
 /* global ManifestHelper */
+/* global WebManifestHelper */
 /* global OrientationManager */
 /* global ScreenLayout */
 /* global SettingsListener */
 /* global StatusBar */
 /* global Service */
 /* global DUMP */
+/* global UrlHelper */
+/* global IconsHelper */
 'use strict';
 
 (function(exports) {
@@ -133,9 +136,7 @@
     // Store initial configuration in this.config
     this.config = configuration;
 
-    if (!this.manifest && this.config && this.config.title) {
-      this.updateName(this.config.title);
-    } else {
+    if (this.manifest) {
       this.name = new ManifestHelper(this.manifest).displayName;
     }
 
@@ -199,17 +200,6 @@
       // requests the |navigation| flag in their manifest.
       this.config.chrome.maximized = true;
     }
-  };
-
-  /**
-   * Update the name of this window.
-   * @param {String} name The new name.
-   */
-  AppWindow.prototype.updateName = function aw_updateName(name) {
-    if (this.config && this.config.title) {
-      this.config.title = name;
-    }
-    this.name = name;
   };
 
   /**
@@ -1008,6 +998,7 @@
     function aw__handle_mozbrowserloadstart(evt) {
       this.loading = true;
       this.inError = false;
+      this.linkedData = null;
       this._changeState('loading', true);
       this.publish('loading');
     };
@@ -1063,6 +1054,8 @@
         this.debug('setting background color..');
         this.browser.element.style.backgroundColor = backgroundColor;
       }
+
+      this.publishLinkedDataEvent();
     };
 
   AppWindow.prototype._handle_mozbrowserlocationchange =
@@ -1070,6 +1063,8 @@
       this.favicons = {};
       this.webManifestURL = null;
       this.config.url = evt.detail;
+      this.title = evt.detail;
+      this.name = UrlHelper.getHostname(evt.detail);
       // Integration test needs to locate the frame by this attribute.
       this.browser.element.dataset.url = evt.detail;
       this.publish('locationchange');
@@ -1078,7 +1073,7 @@
 
   AppWindow.prototype._handle_mozbrowsericonchange =
     function aw__handle_mozbrowsericonchange(evt) {
-
+      console.log(this.config.url || this.origin, 'mozbrowsericonchange', evt);
       var href = evt.detail.href;
       var sizes = evt.detail.sizes;
 
@@ -1115,6 +1110,11 @@
 
       var detail = evt.detail;
 
+      if (detail.name.startsWith('og:')) {
+        this.handleLinkedDataEvent(detail);
+        return;
+      }
+
       switch (detail.name) {
         case 'theme-color':
           if (!detail.type) {
@@ -1135,10 +1135,10 @@
         case 'application-name':
           // Apps have a compulsory name field in their manifest
           // which takes precedence.
-          if (!this.isBrowser()) {
+          if (!this.isBrowser() || this.webManifestURL) {
             return;
           }
-          this.updateName(detail.content);
+          this.name = detail.content;
           this.publish('namechanged');
           break;
       }
@@ -1149,6 +1149,17 @@
     function aw__handle_mozbrowsermanifestchange(evt) {
       if (evt.detail.href) {
         this.webManifestURL = evt.detail.href;
+        WebManifestHelper.getManifest(this.webManifestURL)
+        .then((function(webManifest) {
+          this.webManifestObject = webManifest;
+          this.publish('manifestchange');
+          if (webManifest.short_name || webManifest.name) {
+            this.name = webManifest.short_name || webManifest.name;
+            this.publish('namechanged');
+          }
+        }).bind(this), function() {
+          console.error('Failed to get web manifest.');
+        });
       }
     };
 
@@ -1185,6 +1196,26 @@
       this['_handle_' + evt.type](evt);
     }
   };
+
+  AppWindow.prototype.handleLinkedDataEvent =
+    function aw_handleLinkedDataEvent(evt) {
+      this.linkedData = this.linkedData || {};
+
+      var linkeddataType = evt.name.replace(/^og:/, '');
+      var linkeddataValue = evt.content;
+      this.linkedData[linkeddataType] = linkeddataValue;
+
+      if (!this.loading) {
+        this.publishLinkedDataEvent();
+      }
+    };
+
+  AppWindow.prototype.publishLinkedDataEvent =
+    function aw_publishLinkedDataEvent() {
+      if (this.linkedData) {
+        this.publish('linkeddatachange');
+      }
+    };
 
   /**
    * A temp variable to store current screenshot blob.
@@ -1595,6 +1626,8 @@
      */
     this.publish('resize');
     this.debug('W:', width, 'H:', height);
+
+    return this.waitForNextPaint();
   };
 
   /**
@@ -1621,12 +1654,12 @@
       return;
     }
     if (this.frontWindow) {
-      this._resize();
-      this.frontWindow.resize();
+      return Promise.all(
+        [this._resize(), this.frontWindow.resize()]);
     } else {
       // resize myself if no child.
       this.debug(' will resize... ');
-      this._resize();
+      return this._resize();
     }
   };
 
@@ -2408,5 +2441,44 @@
       this.statusbar.handleStatusbarTouch(evt, barHeight);
     }
   };
+
+  AppWindow.prototype.getSiteIconUrl = function ac_getSiteIconUrl(iconSize) {
+    const ICON_SIZE = 32;
+    if (!iconSize) {
+      iconSize = ICON_SIZE;
+    }
+
+    return new Promise((resolve, reject) => {
+      if (this.webManifestURL) {
+        var siteObj = {
+          manifestUrl: this.webManifestURL,
+          manifest: this.webManifestObject
+        };
+
+        resolve(this.getIconBlob(this.config.url, ICON_SIZE,
+          {icons: this.favicons}, siteObj));
+      } else {
+        resolve(this.getIconBlob(this.config.url, ICON_SIZE,
+          {icons: this.favicons}));
+      }
+    });
+  };
+
+  AppWindow.prototype.getIconBlob = function ac_getIconBlob(origin, iconSize,
+    placeObj = {}, siteObj = {}) {
+
+    return new Promise((resolve, reject) => {
+      IconsHelper.getIcon(origin, iconSize, placeObj, siteObj)
+        .then(iconBlob => {
+          var iconUrl = URL.createObjectURL(iconBlob.blob);
+
+          resolve(iconUrl);
+        })
+        .catch(err => {
+          reject(err);
+        });
+    });
+  };
+
   exports.AppWindow = AppWindow;
 }(window));

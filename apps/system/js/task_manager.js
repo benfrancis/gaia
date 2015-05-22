@@ -1,5 +1,6 @@
 /* global Card, eventSafety, SettingsListener, layoutManager,
-          Service, homescreenLauncher, StackManager, OrientationManager */
+          UrlHelper, Service, homescreenLauncher, StackManager,
+          OrientationManager */
 
 (function(exports) {
   'use strict';
@@ -13,6 +14,7 @@
   function TaskManager() {
     this.stack = null;
     this.cardsByAppID = {};
+    this.cardGroups = new Map();
   }
 
   TaskManager.prototype = Object.create({
@@ -39,11 +41,16 @@
     useAppScreenshotPreviews: true,
 
     /**
-     * Index into the stack of the current app/card
+     * Index into the stack of the current app
      * @memberOf TaskManager.prototype
      */
-    position: 0,
+    stackPosition: 0,
 
+    /**
+     * Index into the list of cards for the current card
+     * @memberOf TaskManager.prototype
+     */
+    cardPosition: 0,
 
     _shouldGoBackHome: false,
     _active: false,
@@ -57,7 +64,7 @@
      */
     currentCard: {
       get: function cs_getCurrentCard() {
-        return this.getCardAtIndex(this.position);
+        return this.getCardAtIndex(this.cardPosition);
       }
     }
   });
@@ -135,6 +142,9 @@
     }
     this.calculateDimensions();
     this.newStackPosition = null;
+    this.cardGroups.clear();
+    this.cardPosition = -1;
+
     // start listening for the various events we need to handle while
     // the card view is showing
     this._registerShowingEvents();
@@ -144,15 +154,38 @@
       this.element.classList.add('filtered');
     }
 
-    // First add an item to the cardsList for each running app
+    // First add an item to the cardsList for each app group
     var stack = this.stack;
-    stack.forEach(function(app, position) {
-      this.addCard(position, app);
-    }, this);
+    stack.forEach((app, stackIdx) => {
+      var groupKey = app.webManifestURL || UrlHelper.getOrigin(app.config.url);
+      var group;
+      if (this.cardGroups.has(groupKey)) {
+        group = this.cardGroups.get(groupKey);
+      } else {
+        group = [];
+        this.cardGroups.set(groupKey, group);
+      }
 
-    this.unfilteredStack.forEach(function(app, position) {
-      app.enterTaskManager();
+      // save the cardPosition for the current app while we're looping through
+      // yeah, I know, this Map is kinda a pita (or I'm doing it wrong).
+      // TODO: refactor
+      if (this.stackPosition === stackIdx) {
+        this.cardPosition = [...this.cardGroups.keys()].indexOf(groupKey);
+      }
+      group.unshift(app);
     });
+
+    if (this.cardGroups.size) {
+      var idx = 0;
+      this.cardGroups.forEach((group, key) => {
+        this.addCard(idx, group, key);
+        idx++;
+      });
+
+      this.unfilteredStack.forEach(function(app) {
+        app.enterTaskManager();
+      });
+    }
 
     this._placeCards();
     this.setActive(true);
@@ -272,7 +305,7 @@
       this.publish(this.EVENT_PREFIX + '-deactivated');
     }
     this.element.classList.toggle('active', active);
-    this.element.classList.toggle('empty', !this.stack.length && active);
+    this.element.classList.toggle('empty', !this.cardGroups.size && active);
 
     // XXX This code is weird as it does not seems symetric.
     // In one direction we considered that the card view is already shown,
@@ -316,9 +349,10 @@
         break;
     }
 
-    this.position = this.stack.indexOf(unfilteredStack[StackManager.position]);
-    if (this.position === -1 || StackManager.outOfStack()) {
-      this.position = this.stack.length - 1;
+    this.stackPosition = this.stack
+                          .indexOf(unfilteredStack[StackManager.position]);
+    if (this.stackPosition === -1 || StackManager.outOfStack()) {
+      this.stackPosition = this.stack.length - 1;
       this._shouldGoBackHome = true;
     } else {
       this._shouldGoBackHome = false;
@@ -335,19 +369,33 @@
    * @param {Number} position in the stack for the new card
    * @param {AppWindow} app The appWindow the card should wrap and represent
    */
-  TaskManager.prototype.addCard = function cs_addCard(position, app) {
+  TaskManager.prototype.addCard = function cs_addCard(position, apps, groupId) {
+    if (!apps.length) {
+      apps = [apps];
+    }
+    // TODO (sfoster) some heuristic for which app in the group to show?
+    var app = apps[0];
     var config = {
       manager: this,
       position: position,
       app: app,
+      group: apps,
+      groupId: groupId,
       windowWidth: this.windowWidth,
       windowHeight: this.windowHeight
     };
     var card = new Card(config);
-    this.cardsByAppID[app.instanceID] = card;
-    this.cardsList.appendChild(card.render());
+    // each app in the group is represented by this one card
+    apps.forEach((groupedApp) => {
+      this.cardsByAppID[groupedApp.instanceID] = card;
+    });
 
-    if (position <= this.position - 2 || position >= this.position + 2) {
+    if (this.cardsList) {
+      this.cardsList.appendChild(card.render());
+    }
+
+    if (position <= this.cardPosition - 2 ||
+        position >= this.cardPosition + 2) {
       card.element.style.visibility = 'hidden';
     }
   };
@@ -358,38 +406,58 @@
    * @memberOf TaskManager.prototype
    * @param {object} card the card instance to be removed
    */
-  TaskManager.prototype.removeCard = function cs_removeCard(card) {
-    var element = card.element;
-    var position = element.dataset.position;
+  TaskManager.prototype.removeApp = function cs_removeApp(app) {
+    // FIXME: remove app from group,
+    // and only remove card if the group is now empty
+    var card = this.cardsByAppID[app.instanceID];
+    var position = card.position;
+    var group = this.cardGroups.get(card.groupId);
+    var cardRemoved;
+
     delete this.cardsByAppID[card.app.instanceID];
-    card.destroy();
-    element = null;
+    group.splice(group.indexOf(card.app), 1);
+
+    if (group.length) {
+      // the next app in the group becomes the top
+      card.app = group[0];
+      // reset transform
+      card.applyStyle({ MozTransform: '' });
+    } else {
+      card.destroy();
+      this.cardGroups.delete(card.groupId);
+      cardRemoved = card;
+    }
 
     // stop tracking this app in our own stack.
     this.stack.splice(position, 1);
 
-    // Update the card positions.
-    var cardNodes = this.cardsList.childNodes;
-    for (var i = position, remainingCard = null; i < cardNodes.length; i++) {
-      remainingCard = this.getCardForElement(cardNodes[i]);
-      if (remainingCard) {
-        remainingCard.position = i;
-        cardNodes[i].dataset.position = i;
+    if (cardRemoved) {
+      // Update the card positions.
+      var cardNodes = this.cardsList.childNodes;
+      for (var i = position, remainingCard = null; i < cardNodes.length; i++) {
+        remainingCard = this.getCardForElement(cardNodes[i]);
+        if (remainingCard) {
+          remainingCard.position = i;
+          cardNodes[i].dataset.position = i;
+        }
       }
-    }
 
-    // Fix for non selectable cards when we remove the last card
-    // Described in https://bugzilla.mozilla.org/show_bug.cgi?id=825293
-    var cardsLength = cardNodes.length;
-    if (!cardsLength) {
-      var homescreen = homescreenLauncher.getHomescreen(true);
-      this.exitToApp(homescreen);
-    }
+      // Fix for non selectable cards when we remove the last card
+      // Described in https://bugzilla.mozilla.org/show_bug.cgi?id=825293
+      var cardsLength = cardNodes.length;
+      if (!cardsLength) {
+        var homescreen = homescreenLauncher.getHomescreen(true);
+        this.exitToApp(homescreen);
+      }
 
-    if (cardsLength === this.position) {
-      this.position--;
+      if (cardsLength === this.cardPosition) {
+        this.cardPosition--;
+      }
+      this.alignCurrentCard();
+    } else {
+      // TODO: some transition?
+      card.render();
     }
-    this.alignCurrentCard();
   };
 
   /**
@@ -398,16 +466,20 @@
    * @memberOf TaskManager.prototype
    */
   TaskManager.prototype._removeCards = function cs_removeCards() {
-    this.stack.forEach(function(app, idx) {
-      var card = this.cardsByAppID[app.instanceID];
-      card && card.destroy();
-    }, this);
+    this.cardGroups.forEach((group, key) => {
+      if (group.length) {
+        var app = group[0];
+        var card = this.cardsByAppID[app.instanceID];
+        card && card.destroy();
+      }
+    });
 
     this.unfilteredStack.forEach(function(app, position) {
       app.leaveTaskManager();
     });
 
     this.cardsByAppID = {};
+    this.cardGroups.clear();
     this.element.classList.remove('filtered');
     this.cardsList.innerHTML = '';
   };
@@ -431,9 +503,10 @@
 
       case 'select' :
 
-        if (this.position != card.position) {
+        if (this.stackPosition != card.position) {
           // Make the target app, the selected app
-          this.position = card.position;
+          this.stackPosition = card.position;
+          this.cardPosition = [...this.cardGroups.keys()].indexOf(card.groupId);
           this.alignCurrentCard();
         }
 
@@ -459,7 +532,7 @@
     if (this._shouldGoBackHome) {
       app = app || homescreenLauncher.getHomescreen(true);
     } else if (!app) {
-      app = this.stack ? this.stack[this.position] :
+      app = this.stack ? this.stack[this.stackPosition] :
                          homescreenLauncher.getHomescreen(true);
     }
 
@@ -506,12 +579,12 @@
         card.applyStyle({ MozTransform: '' });
       }
     } else if (evt.deltaX > 0 &&
-      this.position < this.cardsList.childNodes.length - 1) {
+      this.cardPosition < this.cardsList.childNodes.length - 1) {
       // Two finger swipe left.
-      this.position++;
-    } else if (evt.deltaX < 0 && this.position > 0) {
+      this.cardPosition++;
+    } else if (evt.deltaX < 0 && this.cardPosition > 0) {
       // Two finger swipe right.
-      this.position--;
+      this.cardPosition--;
     }
     this.alignCurrentCard();
   };
@@ -681,8 +754,8 @@
       case 'appterminated':
         app = evt.detail;
         var card = app && this.cardsByAppID[app.instanceID];
-        if (card && card.app && app.instanceID === card.app.instanceID) {
-          this.removeCard(card);
+        if (card && card.app) {
+          this.removeApp(app);
         }
         break;
     }
@@ -701,17 +774,21 @@
   };
 
    /**
-    * Return the card object at the given index into the stack
+    * Return the card object at the given index into the list
     * @memberOf TaskManager.prototype
     * @param {Number} idx index into the stack
     */
   TaskManager.prototype.getCardAtIndex = function(idx) {
-    if (this.stack && idx > -1 && idx < this.stack.length) {
-      var app = this.stack[idx];
-      var card = app && this.cardsByAppID[app.instanceID];
-      if (card) {
-        return card;
+    var groupId = [...this.cardGroups.keys()][idx];
+    var card;
+    if (groupId) {
+      var app = this.cardGroups.get(groupId)[0];
+      if (app) {
+        card = this.cardsByAppID[app.instanceID];
       }
+    }
+    if (card) {
+      return card;
     }
     debug('getCardAtIndex, no card at idx: ' + idx);
     return null;
@@ -731,19 +808,22 @@
    * @memberOf TaskManager.prototype
    */
   TaskManager.prototype._setAccessibilityAttributes = function() {
-    this.stack.forEach(function(app, idx) {
+    var idx = -1;
+    this.cardGroups.forEach((group, groupId) => {
+      idx++;
+      var app = group[0];
       var card = this.cardsByAppID[app.instanceID];
       if (!card) {
         return;
       }
 
       // Hide non-current apps from the screen reader.
-      card.setVisibleForScreenReader(idx === this.position);
+      card.setVisibleForScreenReader(idx === this.cardPosition);
       // Update the screen reader card list size.
-      card.element.setAttribute('aria-setsize', this.stack.length);
+      card.element.setAttribute('aria-setsize', this.cardGroups.size);
       // Update the screen reader card index.
       card.element.setAttribute('aria-posinset', idx + 1);
-    }, this);
+    });
   };
 
   /**
@@ -751,15 +831,18 @@
    * @memberOf TaskManager.prototype
    */
   TaskManager.prototype._placeCards = function() {
-    this.stack.forEach(function(app, idx) {
+    var idx = -1;
+    this.cardGroups.forEach((group) => {
+      idx++;
+      var app = group[0];
       var card = this.cardsByAppID[app.instanceID];
       if (!card) {
         return;
       }
 
       card.move(0, 0);
-      card.element.classList.toggle('current', (idx == this.position));
-    }.bind(this));
+      card.element.classList.toggle('current', (idx == this.cardPosition));
+    });
 
     this._setAccessibilityAttributes();
   };
@@ -789,13 +872,16 @@
       deltaX /= 1.5;
     }
 
-    var current = this.position;
-    this.stack.forEach(function(app, idx) {
+    var current = this.cardPosition;
+    var idx = -1;
+    this.cardGroups.forEach((group, key) => {
+      idx++;
+      var app = group[0];
       var card = this.cardsByAppID[app.instanceID];
       if (idx >= current - 2 && idx <= current + 2) {
         card.move(Math.abs(deltaX) * sign);
       }
-    }, this);
+    });
   };
 
   /**
@@ -804,8 +890,8 @@
    */
   TaskManager.prototype.onExtremity = function() {
     var sign = (this.deltaX > 0) ? -1 : 1;
-    return (this.position === 0 && sign === 1 ||
-            this.position === this.stack.length - 1 && sign === -1);
+    return (this.cardPosition === 0 && sign === 1 ||
+            this.cardPosition === this.cardGroups.size - 1 && sign === -1);
   };
 
   /**
@@ -899,10 +985,10 @@
     var switching = Math.abs(boosted) >= this.SWITCH_CARD_THRESHOLD;
     if (switching) {
       if (this.deltaX < 0 &&
-          this.position < this.cardsList.childNodes.length - 1) {
-        this.position++;
-      } else if (this.deltaX > 0 && this.position > 0) {
-        this.position--;
+          this.cardPosition < this.cardsList.childNodes.length - 1) {
+        this.cardPosition++;
+      } else if (this.deltaX > 0 && this.cardPosition > 0) {
+        this.cardPosition--;
       }
     }
 
@@ -950,10 +1036,13 @@
 
   TaskManager.prototype._setupCardsTransition = function(duration) {
     var currentCard = this.currentCard;
-    var position = this.position;
+    var position = this.cardPosition;
 
     var self = this;
-    this.stack.forEach(function(app, idx) {
+    var idx = -1;
+    this.cardGroups.forEach(function(group, groupId) {
+      var app = group[0];
+      idx++;
       var card = self.cardsByAppID[app.instanceID];
 
       if (idx < position - 2 || idx > position + 2) {
@@ -1001,10 +1090,11 @@
 
   TaskManager.prototype._resetCardsTransition = function() {
     var zeroTransitionStyle = { transition: '' };
-    this.stack.forEach(function(app, idx) {
+    this.cardGroups.forEach((group, key) => {
+      var app = group[0];
       var card = this.cardsByAppID[app.instanceID];
       card.applyStyle(zeroTransitionStyle);
-    }, this);
+    });
   };
 
   exports.TaskManager = TaskManager;

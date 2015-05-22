@@ -76,11 +76,10 @@
 
 #cards-view .card {
   position: absolute;
-  top: 26%;
-  left: 26%;
-  width: 48%;
-  height: 48%;
-
+  top: 30%;
+  left: 30%;
+  width: 40%;
+  height: calc(8rem + 40%);
   margin: 0;
   will-change: transform;
 }
@@ -97,8 +96,16 @@
   background-position: left bottom, left top;
   background-repeat: no-repeat;
   width: 100%;
-  height: 100%;
-  position: relative;
+  height: calc(100% - 8rem);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'shadow\'><feGaussianBlur in=\"SourceAlpha\" stdDeviation=\'2\'/><feOffset dx=\'0\' dy=\'0\' result=\'offsetblur\'/><feFlood flood-color=\'rgba(0,0,0,0.2)\'/><feComposite in2=\'offsetblur\' operator=\'in\'/><feMerge><feMergeNode/><feMergeNode in=\'SourceGraphic\'/></feMerge></filter></svg>#shadow");
+}
+
+#cards-view .screenshotView.maximized {
+  background-position: left calc(100% + 2.3rem), left top;
 }
 
 #cards-view .screenshotView.maximized {
@@ -107,6 +114,19 @@
 
 #cards-view .screenshotView.fullscreen {
   background-size: 100% 100%, cover;
+}
+
+#cards-view [data-groupindex="0"].screenshotView {
+  z-index: 3;
+  transform: rotate(0deg);
+}
+#cards-view [data-groupindex="1"].screenshotView {
+  z-index: 2;
+  transform: rotate(3deg);
+}
+#cards-view [data-groupindex="2"].screenshotView {
+  z-index: 1;
+  transform: rotate(6deg);
 }
 
 #cards-view .screenshotView.rotate-90 {
@@ -176,16 +196,15 @@
 
 #cards-view .card-tray {
   position: absolute;
-  bottom: 0;
+  top: -5rem;
   left: 0;
-
-  height: 3rem;
+  z-index: 10;
+  height: 7rem;
   width: 100%;
   overflow: visible;
   padding: 0;
   box-sizing: border-box;
   color: #fff;
-  background-color: rgb(95, 95, 95);
 }
 
 #cards-view.filtered .card-tray {
@@ -199,6 +218,9 @@
 #cards-view .card-tray > menu.buttonbar {
   margin: 0;
   padding: 0;
+  /* NOTE (sfoster): not clear if/where these buttons would be displayed in mockup
+     so just hide it for now */
+  display: none;
 }
 
 #cards-view .card-tray > menu.buttonbar > button {
@@ -234,7 +256,7 @@
 }
 
 #cards-view .card-tray > button.appIcon {
-  top: 1rem;
+  bottom: 0;
   left: calc(50% - 2rem);
   width: 4rem;
   height: 4rem;
@@ -247,10 +269,16 @@
   border: none;
   position: absolute;
   pointer-events: auto;
-
+  opacity: 1;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
   filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'shadow\'><feGaussianBlur in=\"SourceAlpha\" stdDeviation=\'2\'/><feOffset dx=\'0\' dy=\'0\' result=\'offsetblur\'/><feFlood flood-color=\'rgba(0,0,0,0.2)\'/><feComposite in2=\'offsetblur\' operator=\'in\'/><feMerge><feMergeNode/><feMergeNode in=\'SourceGraphic\'/></feMerge></filter></svg>#shadow");
-
 }
+
+#cards-view .card-tray > button.appIcon.pending {
+  opacity: 0.3;
+}
+
 #cards-view .card.browser .card-tray > button.appIcon {
   background-image: url('../../shared/resources/branding/browser_126.png');
 }
@@ -261,11 +289,18 @@
 }
 
 /* Titles */
+#cards-view .card .title.card-title {
+  font-size: 1.6rem;
+}
+
 #cards-view .card .titles {
   position: absolute;
-  top: -4rem;
+  bottom: 0;
   left: 0;
+
   width: 100%;
+  background-color: #333;
+  z-index: 10;
 }
 
 #cards-view .card .title {
@@ -278,7 +313,6 @@
 
   font-size: 1.4rem;
   font-weight: 300;
-  font-style: italic;
 
   text-overflow: ellipsis;
   text-align: center;

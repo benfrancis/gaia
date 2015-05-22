@@ -114,12 +114,12 @@
 /* URL bar */
 .chrome .controls .urlbar {
   width: calc(100% - 4.5rem);
-  height: 3.4rem;
-  line-height: 3.4rem;
-  margin: 0 0 0.5rem;
+  height: 3.2rem;
+  line-height: 3.2rem;
+  margin: 0.2rem 0 0.5rem;
   border-radius: 1.8rem;
   color: inherit;
-  overflow: hidden;
+  overflow: visible;
   background-color: transparent;
   -moz-margin-start: .5rem;
   position: absolute;
@@ -149,7 +149,7 @@
   width: calc(100% - 3.2rem);
   padding-top: 0;
   padding-bottom: 0;
-  -moz-padding-start: 1.45rem;
+  -moz-padding-start: 3.85rem;
   -moz-padding-end: 0.8rem;
   box-sizing: padding-box;
   overflow: hidden;
@@ -190,24 +190,24 @@
 }
 
 
-.controls .forward-button:not([disabled]) + .urlbar,
-.controls .back-button:not([disabled]) + .forward-button[disabled] + .urlbar {
+.chrome.maximized .controls .forward-button:not([disabled]) + .urlbar,
+.chrome.maximized .controls .back-button:not([disabled]) + .forward-button[disabled] + .urlbar {
   width: calc(100% - 8rem);
   transform: translateX(3.5rem);
 }
 
-.controls .back-button:not([disabled]) + .forward-button:not([disabled]) + .urlbar {
+.chrome.maximized .controls .back-button:not([disabled]) + .forward-button:not([disabled]) + .urlbar {
   width: calc(100% - 12rem);
   transform: translateX(7.5rem);
 }
 
-.appWindow:not(.browser) .controls .forward-button:not([disabled]) + .urlbar,
-.appWindow:not(.browser) .controls .back-button:not([disabled]) + .forward-button[disabled] + .urlbar {
+.chrome.maximized .appWindow:not(.browser) .controls .forward-button:not([disabled]) + .urlbar,
+.chrome.maximized .appWindow:not(.browser) .controls .back-button:not([disabled]) + .forward-button[disabled] + .urlbar {
   width: calc(100% - 4.5rem);
   transform: translateX(3.5rem);
 }
 
-.appWindow:not(.browser) .controls .back-button:not([disabled]) + .forward-button:not([disabled]) + .urlbar {
+.chrome.maximized .appWindow:not(.browser) .controls .back-button:not([disabled]) + .forward-button:not([disabled]) + .urlbar {
   width: calc(100% - 8.5rem);
   transform: translateX(7.5rem);
 }
@@ -261,10 +261,10 @@
 
 /* SSL Lock Icons in rocketbar */
 .chrome-combined.maximized .chrome-has-ssl-indicator .chrome-ssl-indicator {
-  -moz-padding-start: 3rem;
+  -moz-padding-start: 5.5rem;
 
   background-repeat: no-repeat;
-  background-position: 0.1rem center;
+  background-position: 3rem center;
   background-size: 3rem;
 }
 
@@ -295,12 +295,21 @@
   display: unset;
 }
 
-.maximized .chrome-has-ssl-indicator[data-ssl="secure"] .chrome-ssl-indicator {
+.maximized .chrome-has-ssl-indicator[data-ssl="secure"] .chrome-ssl-indicator,
+section.pin-dialog .origin::before {
   background-image: url("images/light/ssl.png");
 }
 
 .maximized .chrome-has-ssl-indicator[data-ssl="broken"] .chrome-ssl-indicator {
   background-image: url("images/light/ssl_broken.png");
+}
+
+.site-icon {
+  width: 3.2rem;
+  height: 3.2rem;
+  background: no-repeat center / 3.2rem content-box;
+  background-image: url('images/default_icon.png');
+  position: absolute;
 }
 
 /* Handle urlbar sizing when back or forward buttons are disabled */
@@ -344,7 +353,7 @@
   background-position: center center;
   background-repeat: no-repeat;
   position: absolute;
-  bottom: 0.3rem;
+  bottom: 0.1rem;
   right: 0;
   padding: 0 0.3rem;
   width: 3rem;
@@ -512,6 +521,162 @@
 
 .light .controls .menu-button:active {
   background-image: url("images/light/overflow_active.png");
+}
+
+section.pin-dialog::before {
+  bottom: 100%;
+  left: 0;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+  border-bottom-color: #E5E5E5;
+  border-width: 12px;
+  margin-left: 0.4rem;
+}
+
+section.pin-dialog.hidden {
+  display: none;
+}
+
+section.pin-dialog {
+  width: 25rem;
+  height: 30rem;
+  display: block;
+  position: absolute;
+  background-color: #E5E5E5;
+  border-radius: 0.5rem;
+  top: 4.4rem;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+section.pin-dialog header h2 {
+  font-size: 1.6rem;
+  font-weight: 400;
+  font-family: sans-serif;
+  font-style: italic;
+  color: #545454;
+}
+
+section.pin-dialog a {
+  position: absolute;
+  text-decoration: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  background-size: 1.6rem 1.6rem;
+}
+
+section.pin-dialog a[data-action="cancel"] {
+  right: 1.5rem;
+  background-image: url("images/close.png");
+  top: 1.5rem;
+}
+
+section.pin-dialog a[data-action="next"] {
+  right: 2.5rem;
+  background-image: url("images/arrow_right.png");
+  top: 12.5rem;
+}
+
+section.pin-dialog a[data-action="previous"] {
+  left: 2.5rem;
+  background-image: url("images/arrow_left.png");
+  top: 12.5rem;
+}
+
+section.pin-dialog button[data-action="pin"] {
+  position: relative;
+  float: none;
+  width: 10rem;
+  margin: 0 auto;
+  background-color: #5F8DD3;
+  color: #fff;
+  font-style: normal;
+}
+
+section.pin-dialog button[data-action="pin"]::before {
+  content: "";
+  width: 0.8rem;
+  height: 1.6rem;
+  position: absolute;
+  top: 1.5rem;
+  left: 2rem;
+  background-size: 0.8rem 1.6rem;
+  background-image: url("images/pin.png");
+}
+
+section.pin-dialog span {
+  color: #B8B8B8;
+  margin-top: 1rem;
+  display: block;
+  clear: both;
+}
+
+section.pin-dialog .origin {
+  font-size: 1.2rem;
+  color: #5D5D5D;
+  padding: 0;
+  font-weight: 400;
+  line-height: 0;
+  margin: -2rem auto;
+  width: -moz-fit-content;
+}
+
+section.pin-dialog .origin .tld {
+  display: inline;
+  color: black;
+}
+
+section.pin-dialog.secure .origin::before {
+  content: "";
+  display: block;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin: 0;
+  position: relative;
+  top: 1rem;
+  left: -2.5rem;
+  background-position: 3rem center;
+  background-size: 3rem auto;
+}
+
+.card-container {
+  height: 12rem;
+  padding-top: 2rem;
+  position: relative;
+  width: 60%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.card-container > * {
+  position: absolute;
+  float: none;
+  margin: 0 auto;
+  transform: translateX(0);
+  transition: transform 0.2s ease-in-out;
+  width: 100%;
+}
+
+.card-container .appName {
+  font-size: 1.4rem;
+  color: #4D4D4D;
+}
+
+.card-container img.site-pin {
+  width: 6.4rem;
+  height: 6.4rem;
+}
+
+.card-container .right {
+  transform: translateX(100%);
+}
+
+.card-container .left {
+  transform: translateX(-100%);
 }
 
 /* Overflow menu */

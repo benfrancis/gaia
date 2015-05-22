@@ -9,17 +9,52 @@ html, body {
 }
 
 body {
-  width: 100%;
   overflow-x: hidden;
+}
+
+#page-indicator {
+  position: fixed;
+  top: 6rem;
+  left: calc(50% - 1.5rem);
+  z-index: 5;
+  display: block;
+  width: 3rem;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 1.5rem;
+  font-size: 0;
+}
+
+#page-indicator > span {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.25rem;
+  background-color: white;
+  border-radius: 100%;
+  opacity: 0.25;
+  transition: opacity 0.2s ease-in-out;
+}
+
+#page-indicator > span.active {
+  opacity: 0.75;
 }
 
 gaia-grid {
   display: block;
-  /* Minus the bottom margin and the search-box height */
-  min-height: calc(100% - 5rem - 5rem);
-  width: 100%;
+  position: absolute;
+  top: calc(5rem + 1.75rem);
+  left: 0;
+  /* Minus the bottom margin, the search-box and the page-indicator heights */
+  min-height: calc(100% - 5rem - 5rem - 1.75rem);
+  width: 100vw;
   padding-bottom: 5rem;
   transition: height 0s 0.5s;
+}
+
+body.was-dragging gaia-grid,
+body.dragging gaia-grid {
+  will-change: transform;
 }
 
 #curtain {
@@ -27,7 +62,7 @@ gaia-grid {
   opacity: 0;
   pointer-events: none;
   height: 100%;
-  width: 100%;
+  width: 100vw;
   position: fixed;
   top: 0;
   transition: opacity var(--transition-duration) ease-in,
@@ -48,7 +83,7 @@ gaia-grid {
   position: fixed;
   top: 0;
   z-index: 4;
-  width: 100%;
+  width: 100vw;
   visibility: hidden;
   opacity: 0;
   transition: opacity var(--transition-duration) ease-in,
@@ -63,6 +98,23 @@ gaia-grid {
 
 .edit-mode #search {
   visibility: hidden;
+}
+
+#pages-container {
+  position: fixed;
+  top: calc(5rem + 3rem);
+  left: 100vw;
+  width: 100vw;
+  height: calc(100% - 5rem - 3rem);
+  color: white;
+  font-size: 1.5rem;
+  text-shadow: rgba(0, 0, 0, 0.6) 0 0.1rem 0.5rem;
+  overflow-y: scroll;
+}
+
+body:not(.dragging) gaia-grid,
+body:not(.dragging) #pages-container {
+  transition: transform 0.2s linear;
 }
 
 #confirmation-message {
@@ -80,6 +132,11 @@ gaia-grid {
 .edit-mode .divider:last-of-type {
   visibility: visible;
 }
+
+/* Disable scroll during panel dragging, to limit layer size so layerisation
+ * works */
+body.dragging,
+body.was-dragging,
 
 /* Disable scroll while edit group UI is being displayed because of keyboard
    translates the vertical home */

@@ -53,7 +53,6 @@
      * @memberof Search.prototype
      */
     open: function openRocketbar(e) {
-      window.scrollTo(0, 0);
       e.stopPropagation();
       e.preventDefault();
 

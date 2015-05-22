@@ -1,0 +1,68 @@
+
+.pin-card {
+  position: relative;
+  width: 45%;
+  margin: 2.5rem 1.2% 0 1.2%;
+  float: left;
+  display: block;
+  height: 10.5rem;
+  border-radius: 5px;
+  background-color: #E4E4E4;
+  background-size: cover;
+  color: #000;
+}
+
+.pin-card > * {
+  pointer-events: none;
+}
+
+.pin-card.light {
+  color: #fff;
+}
+
+.pin-card .background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0.7;
+  border-radius: 5px;
+  top: 0;
+  left: 0;
+}
+
+.pin-card img {
+  position: absolute;
+  top: -1.5rem;
+  left: calc(50% - 1.5rem);
+  width: 3rem;
+  height: 3rem;
+  background: url(pin-card/images/default_icon.png);
+  background-size: cover;
+}
+
+.pin-card header {
+  position: absolute;
+  font-style: italic;
+  text-align: center;
+  top: 2rem;
+  font-size: 1.4rem;
+  width: calc(100% - 2rem);
+  margin: 0 1rem;
+  overflow: hidden;
+  line-height: 1.6rem;
+  height: 1.6rem;
+}
+.pin-card.no-content header {
+  height: 7.6rem;
+}
+
+.pin-card p {
+  height: 6rem;
+  position: absolute;
+  top: 4rem;
+  font-size: 1rem;
+  padding: 0 .7rem;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

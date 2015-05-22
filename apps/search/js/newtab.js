@@ -1,17 +1,30 @@
 'use strict';
+
+/* globals AccessibilityHelper */
+
 (function(exports) {
 
   /**
    * The main Newtab page object.
    * Instantiates places to populate history and top sites.
    */
+
   function Newtab() {
-    var privateWindow = document.getElementById('private-window');
-    privateWindow.addEventListener('click',
-      this.requestPrivateWindow.bind(this));
 
     // Initialize the parent port connection
     var self = this;
+    var tabsIds = ['top-sites-header', 'top-pages-header', 'history-header'];
+    var tabs = [];
+
+    tabsIds.forEach(function(tabId) {
+      var current = document.getElementById(tabId);
+      tabs.push(current);
+      current.addEventListener('click', function(evt) {
+        evt.preventDefault();
+        AccessibilityHelper.setAriaSelected(current, tabs);
+      });
+    });
+
     navigator.mozApps.getSelf().onsuccess = function() {
       var app = this.result;
       app.connect('search-results').then(function onConnAccepted(ports) {

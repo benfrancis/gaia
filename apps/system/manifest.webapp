@@ -156,6 +156,10 @@
     "places": {
       "access": "readwrite",
       "description": "Stores data about browsing history."
+    },
+    "icons": {
+      "access": "readwrite",
+      "description": "Cache website icons."
     }
   },
   "datastores-access": {

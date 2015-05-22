@@ -170,7 +170,7 @@
           return true;
         }
         size = size.toLowerCase();
-        if (!size.contains('x') || size.indexOf('x') !==
+        if (!size.includes('x') || size.indexOf('x') !==
           size.lastIndexOf('x')) {
           return false;
         }

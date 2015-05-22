@@ -51,6 +51,10 @@
     "bookmarks_store": {
       "access": "readonly",
       "description": "Stores data about bookmarks"
+    },
+    "icons": {
+      "access": "readwrite",
+      "description": "Cache website icons."
     }
   },
   "icons": {

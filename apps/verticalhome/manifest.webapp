@@ -46,6 +46,10 @@
   "activities": {},
   "messages": [],
   "datastores-access": {
+    "places": {
+      "readonly": false,
+      "description": "Stores data about browsing history."
+    },
     "bookmarks_store": {
       "readonly": false,
       "description": "Display bookmarks"
@@ -53,6 +57,10 @@
     "collections_store": {
       "readonly": false,
       "description": "Display collections"
+    },
+    "icons": {
+      "access": "readwrite",
+      "description": "Cache website icons."
     }
   },
   "datastores-owned": {

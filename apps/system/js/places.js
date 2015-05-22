@@ -83,6 +83,8 @@
         window.addEventListener('apptitlechange', this);
         window.addEventListener('appiconchange', this);
         window.addEventListener('apploaded', this);
+        window.addEventListener('applinkeddatachange', this);
+        window.addEventListener('appthemecolorchange', this);
 
         asyncStorage.getItem('top-sites', results => {
           this.topSites = results || [];
@@ -138,6 +140,12 @@
           }
           this.debouncePlaceChanges(app.config.url);
           break;
+        case 'applinkeddatachange':
+          this.onLinkedDataChange(app.config.url, app.linkedData);
+          break;
+        case 'appthemecolorchange':
+          this.onThemeColorChange(app.config.url, app.themeColor);
+          break;
       }
     },
 
@@ -192,6 +200,18 @@
         visits: [],
         screenshot: null
       };
+    },
+
+    getPlace: function(url) {
+      return new Promise((function(resolve, reject) {
+        this.getStore().then(function(store) {
+          return store.get(url);
+        }).then(function(place) {
+          resolve(place);
+        }).catch(function(error) {
+          reject();
+        });
+      }).bind(this));
     },
 
     /**
@@ -323,6 +343,18 @@
       this.debounce(url);
     },
 
+    onLinkedDataChange: function(url, linkedData) {
+      this._placeChanges[url] = this._placeChanges[url] || this.defaultPlace();
+      this._placeChanges[url].linkedData = linkedData;
+      this.debounce(url);
+    },
+
+    onThemeColorChange: function(url, color) {
+      this._placeChanges[url] = this._placeChanges[url] || this.defaultPlace();
+      this._placeChanges[url].themeColor = color;
+      this.debounce(url);
+    },
+
     /**
      * Set place title.
      *
@@ -385,6 +417,10 @@
           place.title = edits.title;
         }
 
+        if (edits.themeColor) {
+          place.themeColor = edits.themeColor;
+        }
+
         if (edits.visited) {
           place.visited = edits.visited;
         }
@@ -400,11 +436,35 @@
           place.icons[iconUri] = edits.icons[iconUri];
         }
 
+        if (!place.linkedData) {
+          place.linkedData = {};
+        }
+        for (var ldKey in edits.linkedData) {
+          place.linkedData[ldKey] = edits.linkedData[ldKey];
+        }
+
         place = this.addToVisited(place);
         this.checkTopSites(place);
 
         delete this._placeChanges[url];
         cb(place);
+      });
+    },
+
+    /**
+     * Pin/un-pin a page.
+     *
+     * @param {String} url The URL of the page to pin.
+     * @param {Boolean} value True for pin, false for un-pin.
+     * @returns {Promise} Promise of a response.
+     */
+    setPinned: function(url, value) {
+      return this.editPlace(url, (place, callback) => {
+        place.pinned = value;
+        if (value) {
+          place.pinTime = Date.now();
+        }
+        callback(place);
       });
     }
   };

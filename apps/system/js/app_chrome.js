@@ -6,10 +6,14 @@
 /* global MozActivity */
 /* global SettingsListener */
 /* global Service */
+/* global PinCard */
+/* global UrlHelper */
 
 'use strict';
 
 (function(exports) {
+  const DEFAULT_ICON_URL = '/style/chrome/images/default_icon.png';
+
   var _id = 0;
 
   var newTabManifestURL = null;
@@ -33,9 +37,10 @@
     this.app = app;
     this.instanceID = _id++;
     this.containerElement = app.element;
-    this._recentTitle = false;
-    this._titleTimeout = null;
     this.scrollable = app.browserContainer;
+    this.previousOrigin = '';
+    this.pinned = false;
+    this.currentScope = null;
     this.render();
 
     if (this.app.themeColor) {
@@ -47,8 +52,7 @@
       this._fixedTitle = true;
       this.title.dataset.l10nId = 'search-the-web';
     } else if (!this.app.isBrowser() && this.app.name) {
-      this._gotName = true;
-      this.setFreshTitle(this.app.name);
+      this.title.textContent = this.app.name;
     }
 
     this.reConfig();
@@ -59,10 +63,6 @@
   AppChrome.prototype.CLASS_NAME = 'AppChrome';
 
   AppChrome.prototype.EVENT_PREFIX = 'chrome';
-
-  AppChrome.prototype.FRESH_TITLE = 500;
-
-  AppChrome.prototype.LOCATION_COALESCE = 250;
 
   AppChrome.prototype._DEBUG = false;
 
@@ -116,7 +116,18 @@
                 <button type="button" class="forward-button"
                         data-l10n-id="forward-button" disabled></button>
                 <div class="urlbar js-chrome-ssl-information">
+                  <section role="dialog" class="pin-dialog hidden">
+                    <a href="#" data-action="cancel"></a>
+                    <a href="#" data-action="next"></a>
+                    <a href="#" data-action="previous" hidden></a>
+                    <header><h2>Pin Page</h2></header>
+                    <div class="card-container"></div>
+                    <button data-pin="page" data-action="pin">Pin</button>
+                    <span>from</span>
+                    <span class="origin"></span>
+                  </section>
                   <span class="pb-icon"></span>
+                  <div class="site-icon"></div>
                   <div class="chrome-ssl-indicator chrome-title-container">
                     <span class="title" dir="auto"></span>
                   </div>
@@ -188,6 +199,15 @@
     this.menuButton = this.element.querySelector('.menu-button');
     this.windowsButton = this.element.querySelector('.windows-button');
     this.title = this.element.querySelector('.title');
+    this.siteIcon = this.element.querySelector('.site-icon');
+    this.pinDialog = this.element.querySelector('.pin-dialog');
+    this.pinButton = this.element.querySelector('button[data-action="pin"]');
+    var closeSelector = '.pin-dialog a[data-action="cancel"]';
+    var nextSelector = '.pin-dialog a[data-action="next"]';
+    var previousSelector = '.pin-dialog a[data-action="previous"]';
+    this.closePin = this.element.querySelector(closeSelector);
+    this.nextPin = this.element.querySelector(nextSelector);
+    this.previousPin = this.element.querySelector(previousSelector);
     this.sslIndicator =
       this.element.querySelector('.js-chrome-ssl-information');
 
@@ -241,8 +261,8 @@
         this.handleError(evt);
         break;
 
-      case 'mozbrowserlocationchange':
-        this.handleLocationChanged(evt);
+      case '_locationchange':
+        this.handleLocationChange();
         break;
 
       case 'mozbrowserscrollareachanged':
@@ -253,17 +273,18 @@
         this.handleSecurityChanged(evt);
         break;
 
-      case 'mozbrowsertitlechange':
-        this.handleTitleChanged(evt);
+      case '_namechanged':
+        this.handleNameChanged();
+        break;
+
+      case '_manifestchange':
+        this.handleManifestChange();
         break;
 
       case 'mozbrowsermetachange':
         this.handleMetaChange(evt);
         break;
 
-      case '_namechanged':
-        this.handleNameChanged(evt);
-        break;
     }
   };
 
@@ -271,6 +292,21 @@
     switch (evt.target) {
       case this.reloadButton:
         this.app.reload();
+        break;
+
+      case this.closePin:
+        evt.preventDefault();
+        this.hidePinDialog();
+        break;
+
+      case this.nextPin:
+        evt.preventDefault();
+        this.nextCard();
+        break;
+
+      case this.previousPin:
+        evt.preventDefault();
+        this.previousCard();
         break;
 
       case this.stopButton:
@@ -283,6 +319,11 @@
 
       case this.forwardButton:
         this.app.forward();
+        break;
+
+      case this.siteIcon:
+        evt.stopImmediatePropagation();
+        this.showPinDialog();
         break;
 
       case this.title:
@@ -317,7 +358,115 @@
         evt.stopImmediatePropagation();
         this.onShare();
         break;
+
+      case this.pinButton:
+        this.savePin();
+        break;
     }
+  };
+
+  AppChrome.prototype.showPinDialog = function ac_showPinDialog() {
+    if (!this.isMaximized()) {
+      return;
+    }
+    this.populatePinDialog();
+    this.pinDialog.classList.remove('hidden');
+  };
+
+  AppChrome.prototype.nextCard = function ac_nextCard() {
+    var cards = this.pinDialog.querySelectorAll('.card-container > div');
+    cards[0].classList.add('right');
+    cards[1].classList.remove('left');
+    this.pinButton.dataset.pin = 'site';
+    this.nextPin.hidden = true;
+    var title = 'Pin ' + this.app.name;
+    this.pinDialog.querySelector('header h2').textContent = title;
+    this.previousPin.hidden = false;
+  };
+
+  AppChrome.prototype.previousCard = function ac_previousCard() {
+    var cards = this.pinDialog.querySelectorAll('.card-container > div');
+    cards[0].classList.remove('right');
+    cards[1].classList.add('left');
+    this.pinButton.dataset.pin = 'page';
+    this.pinDialog.querySelector('header h2').textContent = 'Pin Page';
+    this.nextPin.hidden = false;
+    this.previousPin.hidden = true;
+  };
+
+  AppChrome.prototype.hidePinDialog = function ac_hidePinDialog() {
+    this.pinDialog.classList.add('hidden');
+  };
+
+  AppChrome.prototype.generateSitePin = function ac_generateSitePin(icon) {
+    var card = document.createElement('div');
+    var img = document.createElement('img');
+    var span = document.createElement('span');
+    span.className = 'appName';
+    img.className = 'site-pin';
+    img.src = icon;
+    card.appendChild(img);
+    card.appendChild(span);
+    card.className = 'left';
+    return card;
+  };
+
+  AppChrome.prototype.savePin = function ac_savePin() {
+    this.pin();
+    if (this.pinButton.dataset.pin == 'page') {
+      window.places.setPinned(this._currentURL, true).then(function() {
+        console.log('Successfully pinned page in Places database.');
+      }, function() {
+        console.error('Failed to pin page in Places database.');
+      });
+    } else if (this.pinButton.dataset.pin == 'site') {
+      var siteId = null;
+      var siteObject = {};
+      var manifestUrl = this.app.webManifestURL;
+      var manifestObject = this.app.webManifestObject;
+      var pageUrl = this.app.config.url;
+      if (manifestUrl && manifestObject) {
+        siteId = manifestUrl;
+        siteObject.manifest = manifestObject;
+        siteObject.name = manifestObject.short_name || manifestObject.name ||
+          UrlHelper.getHostname(pageUrl);
+        siteObject.scope = new URL(manifestObject.scope || '/', pageUrl).href;
+        siteObject.manifestUrl = manifestUrl;
+        siteObject.url = manifestObject.start_url ||
+          UrlHelper.getOrigin(this.app.config.url);
+      } else {
+        siteId = UrlHelper.getOrigin(this.app.config.url);
+        siteObject.name = this.app.name || UrlHelper.getHostname(pageUrl);
+        siteObject.url = UrlHelper.getOrigin(this.app.config.url);
+        siteObject.scope = new URL('/', pageUrl).href;
+      }
+      siteObject.id = siteId;
+      siteObject.frecency = 1;
+      siteObject.pinned = true;
+      siteObject.pinnedFrom = pageUrl;
+
+      BookmarksDatabase.put(siteObject, siteId).then(function() {
+        console.log('Successfully saved site ' + JSON.stringify(siteObject));
+      }, function() {
+        console.error('Failed to save site');
+      });
+    }
+  };
+
+  AppChrome.prototype.pin = function ac_pin() {
+    this.pinDialog.classList.add('hidden');
+    this.collapse();
+    this.pinned = true;
+    this.app.element.classList.remove('collapsible');
+  };
+
+  AppChrome.prototype.unpin = function ac_unpin() {
+    if (this.pinned) {
+      this.pinned = false;
+      this.app.element.classList.add('collapsible');
+      this.scrollable.scrollTop = 0;
+    }
+    this.maximize();
   };
 
   AppChrome.prototype.titleClicked = function ac_titleClicked() {
@@ -327,7 +476,16 @@
     if (locked || contextMenu) {
       return;
     }
-    window.dispatchEvent(new CustomEvent('global-search-request'));
+
+    if (!this.isMaximized()) {
+      if (this.pinned) {
+        this.app.element.classList.add('collapsible');
+        this.scrollable.scrollTop = 0;
+      }
+      this.maximize();
+    } else {
+      window.dispatchEvent(new CustomEvent('global-search-request'));
+    }
   };
 
   AppChrome.prototype.handleActionEvent = function ac_handleActionEvent(evt) {
@@ -350,8 +508,12 @@
     // a scrollTop position of scrollTopMax - 1, which triggers the transition!
     var element = this.element;
     if (this.scrollable.scrollTop >= this.scrollable.scrollTopMax - 1) {
+      this.hidePinDialog();
       element.classList.remove('maximized');
-    } else {
+      if (this.pinned) {
+        this.app.element.classList.remove('collapsible');
+      }
+    } else if (!this.pinned) {
       element.classList.add('maximized');
     }
 
@@ -371,10 +533,15 @@
       this.reloadButton.addEventListener('click', this);
       this.backButton.addEventListener('click', this);
       this.forwardButton.addEventListener('click', this);
+      this.siteIcon.addEventListener('click', this);
+      this.closePin && this.closePin.addEventListener('click', this);
+      this.nextPin && this.nextPin.addEventListener('click', this);
+      this.previousPin && this.previousPin.addEventListener('click', this);
       this.title.addEventListener('click', this);
       this.scrollable.addEventListener('scroll', this);
       this.menuButton.addEventListener('click', this);
       this.windowsButton.addEventListener('click', this);
+      this.pinButton && this.pinButton.addEventListener('click', this);
     } else {
       this.header.addEventListener('action', this);
     }
@@ -382,14 +549,14 @@
     this.app.element.addEventListener('mozbrowserloadstart', this);
     this.app.element.addEventListener('mozbrowserloadend', this);
     this.app.element.addEventListener('mozbrowsererror', this);
-    this.app.element.addEventListener('mozbrowserlocationchange', this);
-    this.app.element.addEventListener('mozbrowsertitlechange', this);
+    this.app.element.addEventListener('_locationchange', this);
+    this.app.element.addEventListener('_namechanged', this);
+    this.app.element.addEventListener('_manifestchange', this);
     this.app.element.addEventListener('mozbrowsermetachange', this);
     this.app.element.addEventListener('mozbrowserscrollareachanged', this);
     this.app.element.addEventListener('_securitychange', this);
     this.app.element.addEventListener('_loading', this);
     this.app.element.addEventListener('_loaded', this);
-    this.app.element.addEventListener('_namechanged', this);
 
     var element = this.element;
 
@@ -398,6 +565,7 @@
         return;
       }
       var publishEvent = this.isMaximized() ? 'expanded' : 'collapsed';
+
       this.app.publish('chrome' + publishEvent);
     }.bind(this);
 
@@ -410,6 +578,7 @@
       this.stopButton.removeEventListener('click', this);
       this.menuButton.removeEventListener('click', this);
       this.windowsButton.removeEventListener('click', this);
+      this.pinButton.removeEventListener('click', this);
       this.reloadButton.removeEventListener('click', this);
       this.backButton.removeEventListener('click', this);
       this.forwardButton.removeEventListener('click', this);
@@ -438,35 +607,28 @@
     this.app.element.removeEventListener('mozbrowserloadstart', this);
     this.app.element.removeEventListener('mozbrowserloadend', this);
     this.app.element.removeEventListener('mozbrowsererror', this);
-    this.app.element.removeEventListener('mozbrowserlocationchange', this);
-    this.app.element.removeEventListener('mozbrowsertitlechange', this);
+    this.app.element.removeEventListener('_locationchange', this);
+    this.app.element.removeEventListener('_namechanged', this);
+    this.app.element.removeEventListener('_manifestchange', this);
     this.app.element.removeEventListener('mozbrowsermetachange', this);
     this.app.element.removeEventListener('_loading', this);
     this.app.element.removeEventListener('_loaded', this);
-    this.app.element.removeEventListener('_namechanged', this);
     this.app = null;
   };
 
-  // Name has priority over the rest
   AppChrome.prototype.handleNameChanged =
-    function ac_handleNameChanged(evt) {
-      if (this._fixedTitle) {
-        return;
-      }
-      this.title.textContent = this.app.name;
-      this._gotName = true;
-    };
-
-  AppChrome.prototype.setFreshTitle = function ac_setFreshTitle(title) {
-    if (this.isSearchApp()) {
+    function ac_handleNameChanged() {
+    if (this._fixedTitle) {
       return;
     }
-    this.title.textContent = title;
-    clearTimeout(this._titleTimeout);
-    this._recentTitle = true;
-    this._titleTimeout = setTimeout((function() {
-      this._recentTitle = false;
-    }).bind(this), this.FRESH_TITLE);
+    this.title.textContent = this.app.name;
+  };
+
+  AppChrome.prototype.handleManifestChange =
+    function ac_handleManifestChange() {
+    if (this.app.webManifestURL) {
+      this.updateScope(this.app.webManifestURL);
+    }
   };
 
   AppChrome.prototype.handleScrollAreaChanged = function(evt) {
@@ -495,20 +657,15 @@
     this.sslIndicator.classList.toggle(
       'chrome-has-ssl-indicator', sslState === 'broken' || sslState === 'secure'
     );
-  };
-
-  AppChrome.prototype.handleTitleChanged = function(evt) {
-    if (this._gotName || this._fixedTitle) {
-      return;
-    }
-
-    this.setFreshTitle(evt.detail || this._currentURL);
-    this._titleChanged = true;
+    this.pinDialog.classList.toggle('secure',
+      sslState === 'broken' || sslState === 'secure'
+    );
   };
 
   AppChrome.prototype.handleMetaChange =
     function ac__handleMetaChange(evt) {
       var detail = evt.detail;
+
       if (detail.name !== 'theme-color' || !detail.type) {
         return;
       }
@@ -582,7 +739,7 @@
         Math.sqrt((r*r) * 0.241 + (g*g) * 0.691 + (b*b) * 0.068);
 
       var wasLight = self.app.element.classList.contains('light');
-      var isLight  = brightness > 200;
+      var isLight = brightness > 200;
       if (wasLight != isLight) {
         self.app.element.classList.toggle('light', isLight);
         self.app.publish('titlestatechanged');
@@ -618,15 +775,6 @@
     return this.app.config.chrome && !this.app.config.chrome.bar;
   };
 
-  AppChrome.prototype._updateLocation =
-    function ac_updateTitle(title) {
-      if (this._titleChanged || this._gotName || this._recentTitle ||
-          this._fixedTitle) {
-        return;
-      }
-      this.title.textContent = title;
-    };
-
   AppChrome.prototype.updateAddToHomeButton =
     function ac_updateAddToHomeButton() {
       if (!this.addToHomeButton || !BookmarksDatabase) {
@@ -642,88 +790,139 @@
       }.bind(this));
     };
 
-  AppChrome.prototype.handleLocationChanged =
-    function ac_handleLocationChange(evt) {
-      if (!this.app) {
-        return;
-      }
+  AppChrome.prototype.handleLocationChange =
+    function ac_handleLocationChange() {
+    if (!this.app) {
+      return;
+    }
 
-      // Check if this is just a location-change to an anchor tag.
-      var anchorChange = false;
-      if (this._currentURL && evt.detail) {
-        anchorChange =
-          this._currentURL.replace(/#.*/g, '') ===
-          evt.detail.replace(/#.*/g, '');
-      }
+    var url = this.app.config.url;
 
-      // We wait a small while because if we get a title/name it's even better
-      // and we don't want the label to flash
-      setTimeout(this._updateLocation.bind(this, evt.detail),
-                 this.LOCATION_COALESCE);
-      this._currentURL = evt.detail;
+    // Check if this is just a location-change to an anchor tag.
+    var anchorChange = false;
+    if (this._currentURL && url) {
+      anchorChange =
+        this._currentURL.replace(/#.*/g, '') ===
+        url.replace(/#.*/g, '');
+    }
 
-      if (this.backButton && this.forwardButton) {
-        this.app.canGoForward(function forwardSuccess(result) {
-          if (!this.hasNavigation()) {
-            return;
-          }
-          this.forwardButton.disabled = !result;
-        }.bind(this));
+    this._currentURL = url;
+    if (!this._fixedTitle) {
+      this.title.textContent = this.app.name;
+    }
 
-        this.app.canGoBack(function backSuccess(result) {
-          if (!this.hasNavigation()) {
-            return;
-          }
-          this.backButton.disabled = !result;
-        }.bind(this));
-      }
-
-      this.updateAddToHomeButton();
-
-      if (!this.app.isBrowser()) {
-        return;
-      }
-
-      // We havent got a name for this location
-      this._gotName = false;
-
-      if (!anchorChange) {
-        // Make the rocketbar unscrollable until the page resizes to the
-        // appropriate height.
-        this.containerElement.classList.remove('scrollable');
-
-        // Expand
-        if (!this.isMaximized()) {
-          this.element.classList.add('maximized');
+    if (this.backButton && this.forwardButton) {
+      this.app.canGoForward(function forwardSuccess(result) {
+        if (!this.hasNavigation()) {
+          return;
         }
-        this.scrollable.scrollTop = 0;
-      }
+        this.forwardButton.disabled = !result;
+      }.bind(this));
 
-      // Set the title for the private browser landing page.
-      // This is explicitly placed in the locationchange handler as it's
-      // currently possibly to navigate back to the landing page with the
-      // back button. Otherwise it could be in the constructor.
-      if (this.app.isPrivateBrowser() &&
-        this.app.config.url.startsWith('app:')) {
-        this._gotName = true;
-        this.title.dataset.l10nId = 'search-or-enter-address';
+      this.app.canGoBack(function backSuccess(result) {
+        if (!this.hasNavigation()) {
+          return;
+        }
+        this.backButton.disabled = !result;
+      }.bind(this));
+    }
+
+    this.updateAddToHomeButton();
+
+    // We update the icon if the new page has a different origin.
+    var origin = UrlHelper.getOrigin(url);
+
+    if (this.previousOrigin !== origin && this.siteIcon) {
+      console.log('Origin changed %s to %s', this.previousOrigin, origin);
+      this.siteIcon.style.backgroundImage = `url("${DEFAULT_ICON_URL}")`;
+    } else {
+      console.log('Same origin %s', origin);
+    }
+
+    this.previousOrigin = origin;
+
+    this.populatePinDialog();
+
+    if (!this.app.isBrowser()) {
+      return;
+    }
+
+    if (!anchorChange) {
+      // Make the rocketbar unscrollable until the page resizes to the
+      // appropriate height.
+      this.containerElement.classList.remove('scrollable');
+    }
+
+    // Set the title for the private browser landing page.
+    // This is explicitly placed in the locationchange handler as it's
+    // currently possibly to navigate back to the landing page with the
+    // back button. Otherwise it could be in the constructor.
+    if (this.app.isPrivateBrowser() &&
+      url.startsWith('app:')) {
+      this.title.dataset.l10nId = 'search-or-enter-address';
+    }
+
+    if (this.isInCurrentScope(url)) {
+      return;
+    } else {
+      this.updateScope(origin);
+    }
+  };
+
+  AppChrome.prototype.isInCurrentScope =
+    function ac_isInCurrentScope(url) {
+    if (this.currentScope) {
+      var substring = url.substring(this.currentScope.length);
+      if (substring == this.currentScope) {
+        return true;
       }
-    };
+    } else {
+      return false;
+    }
+  };
+
+  AppChrome.prototype.updateScope = function ac_updateScope(siteUrl) {
+    this.currentScope = null;
+    // Is site pinned?
+    BookmarksDatabase.get(siteUrl).then((function(siteObject) {
+      if (siteObject && siteObject.pinned) {
+        this.currentScope = siteObject.scope;
+        this.pin();
+      } else {
+        this.checkForPinnedPage();
+      }
+    }).bind(this), (function() {
+      this.checkForPinnedPage();
+    }).bind(this));
+  };
+
+  AppChrome.prototype.checkForPinnedPage = function ac_checkForPinnedPage() {
+    window.places.getPlace(this.app.config.url).then((function(place) {
+      if (place && place.pinned) {
+        this.pin();
+      } else {
+        this.unpin();
+      }
+    }).bind(this), (function() {
+      this.unpin();
+    }).bind(this));
+  };
 
   AppChrome.prototype.handleLoadStart = function ac_handleLoadStart(evt) {
     this.containerElement.classList.add('loading');
-    this._titleChanged = false;
   };
 
   AppChrome.prototype.handleLoadEnd = function ac_handleLoadEnd(evt) {
     this.containerElement.classList.remove('loading');
+    this.setSiteIcon();
   };
 
   AppChrome.prototype.handleError = function ac_handleError(evt) {
     if (evt.detail && evt.detail.type === 'fatal') {
       return;
     }
-    if (this.useCombinedChrome() && this.app.config.chrome.scrollable) {
+    if (this.useCombinedChrome() &&
+      this.app.config.chrome.scrollable && !this.pinned) {
       // When we get an error, keep the rocketbar maximized.
       this.element.classList.add('maximized');
       this.containerElement.classList.remove('scrollable');
@@ -744,6 +943,7 @@
   AppChrome.prototype.collapse = function ac_collapse() {
     window.removeEventListener('rocketbar-overlayclosed', this);
     this.element.classList.remove('maximized');
+    this.hidePinDialog();
   };
 
   AppChrome.prototype.isMaximized = function ac_isMaximized() {
@@ -884,6 +1084,70 @@
         this.app.config.searchName : this.title.textContent;
       this.app.contextmenu.showDefaultMenu(newTabManifestURL, name);
     }
+  };
+
+  AppChrome.prototype.populatePinDialog = function ac_populate() {
+    if (!this.pinDialog) {
+      return;
+    }
+
+    var origin = UrlHelper.getHostname(this.app.config.url).split('.');
+    var originElement = this.pinDialog.querySelector('.origin');
+    var tld = originElement.querySelector('.tld');
+    if (!tld) {
+      tld = document.createElement('span');
+      tld.className = 'tld';
+      originElement.appendChild(tld);
+    }
+    tld.textContent = origin.slice(origin.length - 2, origin.length).join('.');
+
+    if (origin.length > 2) {
+      var subdomains = origin.slice(0, origin.length - 2).join('.');
+      originElement.textContent =  subdomains + '.';
+    }
+
+    this.setPinDialogCard();
+    this.previousCard();
+  };
+
+  AppChrome.prototype.setPinDialogCard = function ac_setPinDialogCard(url) {
+    var currentIcon = window.getComputedStyle(this.siteIcon).backgroundImage;
+    currentIcon = currentIcon.replace('url("', '').replace('")', '');
+    var info = {
+      url: this.app.config.url,
+      title: this.app.title,
+      icons: JSON.parse('{"' + currentIcon +'":{"sizes":[]}}')
+    };
+    var card = new PinCard(info);
+    var container = this.pinDialog.querySelector('.card-container');
+    container.innerHTML = '';
+    container.appendChild(card.element);
+    var sitePin = this.generateSitePin(currentIcon);
+    container.appendChild(sitePin);
+    this.setAppName();
+  };
+
+  AppChrome.prototype.setAppName = function ac_setAppName() {
+    var nameEl = this.pinDialog.querySelector('.card-container .appName');
+    nameEl.textContent = this.app.name;
+  };
+
+  AppChrome.prototype.setSiteIcon = function ac_setSiteIcon(url) {
+    if (!this.siteIcon) {
+      return;
+    }
+
+    this.siteIcon.style.backgroundImage = `url("${DEFAULT_ICON_URL}")`;
+
+    this.app.getSiteIconUrl()
+      .then(iconUrl => {
+        if (iconUrl) {
+          this.siteIcon.style.backgroundImage = `url("${iconUrl}")`;
+        }
+      })
+      .catch((err) => {
+        console.log('Something went terribly wrong: %s', err);
+      });
   };
 
   exports.AppChrome = AppChrome;
