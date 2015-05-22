@@ -2,6 +2,8 @@
 /* global GaiaGrid */
 /* global GridIconRenderer */
 /* global MozActivity */
+/* global LazyLoader */
+/* global IconsHelper */
 /* jshint nonew: false */
 
 (function(exports) {
@@ -53,6 +55,22 @@
 
     update: GaiaGrid.GridItem.prototype.updateFromDatastore,
 
+    updateIcon: function(callback) {
+      if (typeof this.detail.icon != 'object') {
+        callback();
+        return;
+      }
+
+      var siteObj = {icons: this.detail.icon};
+
+      LazyLoader.load('shared/js/icons_helper.js', (function() {
+        IconsHelper.getIcon(this.detail.url, null, siteObj).then(icon => {
+          this.detail.icon = URL.createObjectURL(icon.blob);
+          callback();
+        });
+      }).bind(this));
+    },
+
     /**
      * Bookmarks are always editable unless noted otherwise in features.
      */
@@ -78,11 +96,13 @@
      * This method overrides the GridItem.render function.
      */
     render: function() {
-      GaiaGrid.GridItem.prototype.render.call(this);
-      this.element.classList.add('bookmark');
-      if (this.isEditable()) {
-        this.element.classList.add('editable');
-      }
+      this.updateIcon(function() {
+        GaiaGrid.GridItem.prototype.render.call(this);
+        this.element.classList.add('bookmark');
+        if (this.isEditable()) {
+          this.element.classList.add('editable');
+        }
+      }.bind(this));
     },
 
     /**

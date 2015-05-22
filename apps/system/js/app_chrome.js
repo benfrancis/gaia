@@ -457,6 +457,7 @@
       siteObject.frecency = 1;
       siteObject.pinned = true;
       siteObject.pinnedFrom = pageUrl;
+      siteObject.icon = this.app.favicons;
 
       BookmarksDatabase.put(siteObject, siteId).then(function() {
         console.log('Successfully saved site ' + JSON.stringify(siteObject));
