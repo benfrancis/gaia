@@ -33,23 +33,12 @@
     this.app = app;
     this.instanceID = _id++;
     this.containerElement = app.element;
-    this._recentTitle = false;
     this._themeChanged = false;
-    this._titleTimeout = null;
     this.scrollable = app.browserContainer;
     this.render();
 
     if (this.app.themeColor) {
       this.setThemeColor(this.app.themeColor);
-    }
-
-    var chrome = this.app.config.chrome;
-    if (!this.app.isBrowser() && chrome && !chrome.scrollable) {
-      this._fixedTitle = true;
-      this.title.dataset.l10nId = 'search-the-web';
-    } else if (!this.app.isBrowser() && this.app.name) {
-      this._gotName = true;
-      this.setFreshTitle(this.app.name);
     }
 
     this.reConfig();
@@ -61,10 +50,6 @@
 
   AppChrome.prototype.EVENT_PREFIX = 'chrome';
 
-  AppChrome.prototype.FRESH_TITLE = 500;
-
-  AppChrome.prototype.LOCATION_COALESCE = 250;
-
   AppChrome.prototype._DEBUG = false;
 
   AppChrome.prototype.reConfig = function() {
@@ -74,10 +59,13 @@
     }
 
     if (this.isSearchApp()) {
+      this._fixedTitle = true;
       this.app.element.classList.add('search-app');
       this.title.setAttribute('data-l10n-id', 'search-or-enter-address');
     } else {
+      this._fixedTitle = false;
       this.app.element.classList.remove('search-app');
+      this.title.textContent = this.app.name;
     }
 
     if (chrome.bar) {
@@ -244,8 +232,8 @@
         this.handleError(evt);
         break;
 
-      case 'mozbrowserlocationchange':
-        this.handleLocationChanged(evt);
+      case '_locationchange':
+        this.handleLocationChange();
         break;
 
       case 'mozbrowserscrollareachanged':
@@ -256,16 +244,12 @@
         this.handleSecurityChanged(evt);
         break;
 
-      case 'mozbrowsertitlechange':
-        this.handleTitleChanged(evt);
+      case '_namechanged':
+        this.handleNameChanged();
         break;
 
       case 'mozbrowsermetachange':
         this.handleMetaChange(evt);
-        break;
-
-      case '_namechanged':
-        this.handleNameChanged(evt);
         break;
     }
   };
@@ -387,10 +371,10 @@
     this.app.element.addEventListener('mozbrowserloadstart', this);
     this.app.element.addEventListener('mozbrowserloadend', this);
     this.app.element.addEventListener('mozbrowsererror', this);
-    this.app.element.addEventListener('mozbrowserlocationchange', this);
-    this.app.element.addEventListener('mozbrowsertitlechange', this);
     this.app.element.addEventListener('mozbrowsermetachange', this);
     this.app.element.addEventListener('mozbrowserscrollareachanged', this);
+    this.app.element.addEventListener('_locationchange', this);
+    this.app.element.addEventListener('_namechanged', this);
     this.app.element.addEventListener('_securitychange', this);
     this.app.element.addEventListener('_loading', this);
     this.app.element.addEventListener('_loaded', this);
@@ -443,9 +427,9 @@
     this.app.element.removeEventListener('mozbrowserloadstart', this);
     this.app.element.removeEventListener('mozbrowserloadend', this);
     this.app.element.removeEventListener('mozbrowsererror', this);
-    this.app.element.removeEventListener('mozbrowserlocationchange', this);
-    this.app.element.removeEventListener('mozbrowsertitlechange', this);
     this.app.element.removeEventListener('mozbrowsermetachange', this);
+    this.app.element.removeEventListener('_locationchange', this);
+    this.app.element.removeEventListener('_namechanged', this);
     this.app.element.removeEventListener('_loading', this);
     this.app.element.removeEventListener('_loaded', this);
     this.app.element.removeEventListener('_namechanged', this);
@@ -461,18 +445,6 @@
       this.title.textContent = this.app.name;
       this._gotName = true;
     };
-
-  AppChrome.prototype.setFreshTitle = function ac_setFreshTitle(title) {
-    if (this.isSearchApp()) {
-      return;
-    }
-    this.title.textContent = title;
-    clearTimeout(this._titleTimeout);
-    this._recentTitle = true;
-    this._titleTimeout = setTimeout((function() {
-      this._recentTitle = false;
-    }).bind(this), this.FRESH_TITLE);
-  };
 
   AppChrome.prototype.handleScrollAreaChanged = function(evt) {
     // Check if the page has become scrollable and add the scrollable class.
@@ -500,15 +472,6 @@
     this.sslIndicator.classList.toggle(
       'chrome-has-ssl-indicator', sslState === 'broken' || sslState === 'secure'
     );
-  };
-
-  AppChrome.prototype.handleTitleChanged = function(evt) {
-    if (this._gotName || this._fixedTitle) {
-      return;
-    }
-
-    this.setFreshTitle(evt.detail || this._currentURL);
-    this._titleChanged = true;
   };
 
   AppChrome.prototype.handleMetaChange =
@@ -624,15 +587,6 @@
     return this.app.config.chrome && !this.app.config.chrome.bar;
   };
 
-  AppChrome.prototype._updateLocation =
-    function ac_updateTitle(title) {
-      if (this._titleChanged || this._gotName || this._recentTitle ||
-          this._fixedTitle) {
-        return;
-      }
-      this.title.textContent = title;
-    };
-
   AppChrome.prototype.updateAddToHomeButton =
     function ac_updateAddToHomeButton() {
       if (!this.addToHomeButton || !BookmarksDatabase) {
@@ -648,25 +602,24 @@
       }.bind(this));
     };
 
-  AppChrome.prototype.handleLocationChanged =
-    function ac_handleLocationChange(evt) {
+  AppChrome.prototype.handleLocationChange =
+    function ac_handleLocationChange() {
       if (!this.app) {
         return;
       }
 
       // Check if this is just a location-change to an anchor tag.
       var anchorChange = false;
-      if (this._currentURL && evt.detail) {
+      if (this._currentURL && this.app.config.url) {
         anchorChange =
           this._currentURL.replace(/#.*/g, '') ===
-          evt.detail.replace(/#.*/g, '');
+          this.app.config.url.replace(/#.*/g, '');
       }
 
-      // We wait a small while because if we get a title/name it's even better
-      // and we don't want the label to flash
-      setTimeout(this._updateLocation.bind(this, evt.detail),
-                 this.LOCATION_COALESCE);
-      this._currentURL = evt.detail;
+      this._currentURL = this.app.config.url;
+      if (!this._fixedTitle) {
+        this.title.textContent = this.app.name;
+      }
 
       if (this.backButton && this.forwardButton) {
         this.app.canGoForward(function forwardSuccess(result) {
@@ -690,9 +643,6 @@
         return;
       }
 
-      // We havent got a name for this location
-      this._gotName = false;
-
       if (!anchorChange) {
         // Make the rocketbar unscrollable until the page resizes to the
         // appropriate height.
@@ -711,14 +661,12 @@
       // back button. Otherwise it could be in the constructor.
       if (this.app.isPrivateBrowser() &&
         this.app.config.url.startsWith('app:')) {
-        this._gotName = true;
         this.title.dataset.l10nId = 'search-or-enter-address';
       }
     };
 
   AppChrome.prototype.handleLoadStart = function ac_handleLoadStart(evt) {
     this.containerElement.classList.add('loading');
-    this._titleChanged = false;
     this._themeChanged = false;
   };
 

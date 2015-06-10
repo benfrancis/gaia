@@ -43,6 +43,7 @@
       'shared/js/settings_listener.js',
       'shared/js/async_storage.js',
       'shared/js/manifest_helper.js',
+      'shared/js/web_manifest_helper.js',
       'shared/js/notification_helper.js',
       'shared/js/tagged.js',
       'shared/js/idletimer.js' // XXX: Move into ScreenManager
