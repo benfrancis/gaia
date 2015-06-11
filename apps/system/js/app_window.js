@@ -901,10 +901,6 @@
     }
     this.name = new ManifestHelper(this.manifest).displayName;
 
-    if (this.identificationTitle) {
-      this.identificationTitle.textContent = this.name;
-    }
-
     // For uitest.
     this.element.dataset.localizedName = this.name;
     this.publish('namechanged');
@@ -1010,8 +1006,7 @@
       this.publish('titlechange');
 
       // Do not set the identification title if we're browsing a URL privately
-      if (this.identificationTitle && !this.manifest &&
-        (!this.isPrivateBrowser() || this.config.url.startsWith('app:'))) {
+      if (this.identificationTitle && !this.isPrivateBrowser()) {
         this.identificationTitle.textContent = this.title;
       }
     };
@@ -1852,7 +1847,7 @@
         }
 
         if (this.identificationTitle) {
-          this.identificationTitle.textContent = this.name;
+          this.identificationTitle.textContent = this.title;
         }
       }
     };
